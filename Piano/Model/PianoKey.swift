@@ -31,4 +31,20 @@ struct PianoKey: Identifiable, Hashable {
     static func == (lhs: PianoKey, rhs: PianoKey) -> Bool {
         lhs.note == rhs.note && lhs.octave == rhs.octave
     }
+    
+    func nextBlackKey() -> PianoKey? {
+        guard !isBlack else { return nil }
+        let blackKeyNotes: [PianoNote: PianoNote] = [
+            .C: .CSharp,
+            .D: .DSharp,
+            .F: .FSharp,
+            .G: .GSharp,
+            .A: .ASharp
+        ]
+        
+        if let blackNote = blackKeyNotes[self.note] {
+            return PianoKey(note: blackNote, octave: octave)
+        }
+        return nil
+    }
 }

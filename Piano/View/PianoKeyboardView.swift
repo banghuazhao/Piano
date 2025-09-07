@@ -97,7 +97,7 @@ struct PianoKeyboardView: View {
             
             ZStack {
                 ForEach(Array(viewModel.whiteKeys.enumerated()), id: \.element.id) { index, whiteKey in
-                    if let blackKey = blackKeyAfter(whiteKey) {
+                    if let blackKey = whiteKey.nextBlackKey() {
                         let whiteKeyPosition = CGFloat(index) * (whiteKeyWidth + 2)
                         let blackKeyPosition = whiteKeyPosition + whiteKeyWidth * 0.75 // Position in the gap between white keys
                         
@@ -112,27 +112,12 @@ struct PianoKeyboardView: View {
                             }
                         )
                         .frame(width: blackKeyWidth)
-                        .position(x: blackKeyPosition + blackKeyWidth / 2, y: geometry.size.height * 0.4) // Position higher to appear raised
+                        .position(x: blackKeyPosition + blackKeyWidth / 2, y: geometry.size.height * 0.3) // Position higher to appear raised
                         .zIndex(1)
                     }
                 }
             }
         }
-    }
-    
-    private func blackKeyAfter(_ whiteKey: PianoKey) -> PianoKey? {
-        let blackKeyNotes: [PianoNote: PianoNote] = [
-            .C: .CSharp,
-            .D: .DSharp,
-            .F: .FSharp,
-            .G: .GSharp,
-            .A: .ASharp
-        ]
-        
-        if let blackNote = blackKeyNotes[whiteKey.note] {
-            return PianoKey(note: blackNote, octave: whiteKey.octave)
-        }
-        return nil
     }
 }
 

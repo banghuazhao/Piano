@@ -62,7 +62,7 @@ struct PianoKeyView: View {
     
     private var blackKeyView: some View {
         RoundedRectangle(cornerRadius: 6)
-            .fill(blackKeyGradient)
+            .fill(Color.black)
             .overlay(
                 RoundedRectangle(cornerRadius: 6)
                     .stroke(Color.black.opacity(0.3), lineWidth: 1)
@@ -95,22 +95,6 @@ struct PianoKeyView: View {
         } else {
             return LinearGradient(
                 colors: [Color.white, Color.gray.opacity(0.05)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        }
-    }
-    
-    private var blackKeyGradient: LinearGradient {
-        if isPressed {
-            return LinearGradient(
-                colors: [Color.black.opacity(0.8), Color.gray.opacity(0.3)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        } else {
-            return LinearGradient(
-                colors: [Color.black, Color.gray.opacity(0.2)],
                 startPoint: .top,
                 endPoint: .bottom
             )
