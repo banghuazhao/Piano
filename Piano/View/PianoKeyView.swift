@@ -82,6 +82,7 @@ struct PianoKeyView: View {
                 x: 0,
                 y: isPressed ? 1 : 2
             )
+            .frame(height: 120) // Shorter height to appear raised above white keys
     }
     
     private var whiteKeyGradient: LinearGradient {

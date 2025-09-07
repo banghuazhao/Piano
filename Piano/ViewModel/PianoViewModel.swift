@@ -18,7 +18,6 @@ class PianoViewModel {
     // MARK: - Published Properties
 
     var currentOctave: Int = 4
-    var isInitialized: Bool = false
     var errorMessage: String?
 
     // MARK: - Computed Properties
@@ -52,30 +51,14 @@ class PianoViewModel {
         keys = PianoKey.generateKeys(startOctave: 2, endOctave: 6)
     }
 
-    func initializeAudio() async {
-        do {
-            try await audioEngine.loadSoundFont()
-            isInitialized = true
-            errorMessage = nil
-        } catch {
-            errorMessage = error.localizedDescription
-            isInitialized = false
-            print(errorMessage)
-        }
-    }
-
     // MARK: - Key Interaction Methods
 
     func keyPressed(_ key: PianoKey) {
-        guard isInitialized else { return }
-
         pressedKeys.insert(key)
         audioEngine.playNote(key.midiNote, velocity: 100)
     }
 
     func keyReleased(_ key: PianoKey) {
-        guard isInitialized else { return }
-
         pressedKeys.remove(key)
         audioEngine.stopNote(key.midiNote)
     }
@@ -101,13 +84,5 @@ class PianoViewModel {
     private func stopAllNotes() {
         audioEngine.stopAllNotes()
         pressedKeys.removeAll()
-    }
-
-    // MARK: - Utility Methods
-
-    func retryInitialization() {
-        Task {
-            await initializeAudio()
-        }
     }
 }

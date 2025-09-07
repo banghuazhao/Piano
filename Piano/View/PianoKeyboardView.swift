@@ -23,9 +23,6 @@ struct PianoKeyboardView: View {
             }
             .frame(height: 200)
             .padding(.horizontal, 16)
-            
-            // Status indicator
-            statusView
         }
         .background(
             LinearGradient(
@@ -34,9 +31,6 @@ struct PianoKeyboardView: View {
                 endPoint: .bottom
             )
         )
-        .task {
-            await viewModel.initializeAudio()
-        }
     }
     
     private var octaveControls: some View {
@@ -83,15 +77,17 @@ struct PianoKeyboardView: View {
     }
     
     private var blackKeysView: some View {
-        HStack(spacing: 2) {
-            ForEach(viewModel.whiteKeys) { whiteKey in
-                HStack(spacing: 0) {
-                    // Spacer for positioning
-                    Spacer()
-                        .frame(maxWidth: .infinity)
-                    
-                    // Black key if it exists between this white key and the next
+        GeometryReader { geometry in
+            let totalSpacing = CGFloat(viewModel.whiteKeys.count - 1) * 2
+            let whiteKeyWidth = (geometry.size.width - totalSpacing) / CGFloat(viewModel.whiteKeys.count)
+            let blackKeyWidth: CGFloat = whiteKeyWidth * 0.6
+            
+            ZStack {
+                ForEach(Array(viewModel.whiteKeys.enumerated()), id: \.element.id) { index, whiteKey in
                     if let blackKey = blackKeyAfter(whiteKey) {
+                        let whiteKeyPosition = CGFloat(index) * (whiteKeyWidth + 2)
+                        let blackKeyPosition = whiteKeyPosition + whiteKeyWidth * 0.75 // Position in the gap between white keys
+                        
                         PianoKeyView(
                             key: blackKey,
                             isPressed: viewModel.isKeyPressed(blackKey),
@@ -102,61 +98,13 @@ struct PianoKeyboardView: View {
                                 viewModel.keyReleased(blackKey)
                             }
                         )
-                        .frame(width: 24)
+                        .frame(width: blackKeyWidth)
+                        .position(x: blackKeyPosition + blackKeyWidth / 2, y: geometry.size.height * 0.4) // Position higher to appear raised
                         .zIndex(1)
-                    } else {
-                        Spacer()
-                            .frame(width: 24)
                     }
                 }
             }
         }
-    }
-    
-    private var statusView: some View {
-        HStack {
-            if viewModel.isInitialized {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(Color.green)
-                        .frame(width: 8, height: 8)
-                    Text("Ready")
-                        .font(.caption)
-                        .foregroundColor(.green)
-                }
-            } else if let errorMessage = viewModel.errorMessage {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(Color.red)
-                        .frame(width: 8, height: 8)
-                    Text("Error: \(errorMessage)")
-                        .font(.caption)
-                        .foregroundColor(.red)
-                    Button("Retry") {
-                        viewModel.retryInitialization()
-                    }
-                    .font(.caption)
-                    .foregroundColor(.blue)
-                }
-            } else {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(Color.orange)
-                        .frame(width: 8, height: 8)
-                    Text("Loading...")
-                        .font(.caption)
-                        .foregroundColor(.orange)
-                }
-            }
-            
-            Spacer()
-            
-            Text("\(viewModel.pressedKeysCount) keys pressed")
-                .font(.caption)
-                .foregroundColor(.secondary)
-        }
-        .padding(.horizontal, 16)
-        .padding(.bottom, 8)
     }
     
     private func blackKeyAfter(_ whiteKey: PianoKey) -> PianoKey? {

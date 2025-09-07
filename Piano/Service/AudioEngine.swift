@@ -9,10 +9,10 @@ import SwiftUI
 class AudioEngine {
     private let audioEngine = AVAudioEngine()
     private let sampler = AVAudioUnitSampler()
-    private var isInitialized = false
 
     init() {
         setupAudioEngine()
+        loadSoundFont()
     }
 
     private func setupAudioEngine() {
@@ -40,9 +40,7 @@ class AudioEngine {
         }
     }
 
-    func loadSoundFont() async throws {
-        guard !isInitialized else { return }
-
+    func loadSoundFont()  {
         guard let soundFontURL = Bundle.main.url(forResource: "Piano", withExtension: "sf2") else {
             return
         }
@@ -60,22 +58,17 @@ class AudioEngine {
         } catch {
             print("Failed to load SF2 file: \(error)")
         }
-
-        isInitialized = true
     }
 
     func playNote(_ midiNote: UInt8, velocity: UInt8 = 100) {
-        guard isInitialized else { return }
         sampler.startNote(midiNote, withVelocity: velocity, onChannel: 0)
     }
 
     func stopNote(_ midiNote: UInt8) {
-        guard isInitialized else { return }
         sampler.stopNote(midiNote, onChannel: 0)
     }
 
     func stopAllNotes() {
-        guard isInitialized else { return }
         sampler.sendController(123, withValue: 0, onChannel: 0) // All notes off
     }
 }
