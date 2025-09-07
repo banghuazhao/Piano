@@ -12,6 +12,7 @@ struct PianoKeyboardView: View {
         VStack(spacing: 0) {
             // Octave Controls
             octaveControls
+            sustainControl
             
             // Piano Keyboard
             ZStack(alignment: .topLeading) {
@@ -31,6 +32,18 @@ struct PianoKeyboardView: View {
                 endPoint: .bottom
             )
         )
+    }
+
+    private var sustainControl: some View {
+        HStack(spacing: 12) {
+            Toggle(isOn: $viewModel.isSustainOn) {
+                Text("Sustain")
+                    .font(.subheadline)
+                    .foregroundColor(.primary)
+            }
+            .toggleStyle(SwitchToggleStyle(tint: .blue))
+        }
+        .padding(.vertical, 8)
     }
     
     private var octaveControls: some View {

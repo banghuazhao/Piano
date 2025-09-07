@@ -9,18 +9,17 @@ import SwiftUI
 @Observable
 @MainActor
 class PianoViewModel {
-    // MARK: - Properties
+    
+    var isSustainOn: Bool = false
+    var currentOctave: Int = 4
 
-    private let audioEngine: AudioEngine
+
     private var keys: [PianoKey] = []
     private var pressedKeys: Set<PianoKey> = []
-
-    // MARK: - Published Properties
-
-    var currentOctave: Int = 4
-    var errorMessage: String?
-
-    // MARK: - Computed Properties
+    private let startOctave = 1
+    private let endOctave = 7
+    
+    private let audioEngine: AudioEngine
 
     var pianoKeys: [PianoKey] {
         keys.filter { $0.octave == currentOctave }
@@ -34,21 +33,25 @@ class PianoViewModel {
         pianoKeys.filter { $0.isBlack }
     }
 
-    var pressedKeysCount: Int {
-        pressedKeys.count
-    }
-
     // MARK: - Initialization
 
-    init() {
-        audioEngine = AudioEngine()
+    init(audioEngine: AudioEngine = AudioEngine()) {
+        self.audioEngine = audioEngine
         setupKeys()
     }
 
     // MARK: - Setup Methods
 
     private func setupKeys() {
-        keys = PianoKey.generateKeys(startOctave: 2, endOctave: 6)
+        var keys: [PianoKey] = []
+
+        for octave in startOctave ... endOctave {
+            for note in PianoNote.allCases {
+                keys.append(PianoKey(note: note, octave: octave))
+            }
+        }
+        
+        self.keys = keys
     }
 
     // MARK: - Key Interaction Methods
@@ -60,7 +63,9 @@ class PianoViewModel {
 
     func keyReleased(_ key: PianoKey) {
         pressedKeys.remove(key)
-        audioEngine.stopNote(key.midiNote)
+        if !isSustainOn {
+            audioEngine.stopNote(key.midiNote)
+        }
     }
 
     func isKeyPressed(_ key: PianoKey) -> Bool {
@@ -70,19 +75,12 @@ class PianoViewModel {
     // MARK: - Octave Control Methods
 
     func increaseOctave() {
-        guard currentOctave < 6 else { return }
+        guard currentOctave < endOctave else { return }
         currentOctave += 1
-        stopAllNotes()
     }
 
     func decreaseOctave() {
-        guard currentOctave > 2 else { return }
+        guard currentOctave > startOctave else { return }
         currentOctave -= 1
-        stopAllNotes()
-    }
-
-    private func stopAllNotes() {
-        audioEngine.stopAllNotes()
-        pressedKeys.removeAll()
     }
 }

@@ -45,6 +45,10 @@ enum PianoNote: String, CaseIterable {
         }
     }
 
+    /// Calculate MIDI (Musical Instrument Digital Interface) for the note
+    /// Base: 60 (MIDI note 60 = C4 = Middle C)
+    /// Octave adjustment: (octave - 4) * 12 (each octave = 12 semitones)
+    /// Note offset: midiOffset (0-11 for C through B)
     func midiNote(octave: Int) -> UInt8 {
         // MIDI note 60 is C4 (middle C)
         return UInt8(60 + (octave - 4) * 12 + midiOffset)

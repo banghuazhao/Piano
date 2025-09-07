@@ -32,17 +32,3 @@ struct PianoKey: Identifiable, Hashable {
         lhs.note == rhs.note && lhs.octave == rhs.octave
     }
 }
-
-extension PianoKey {
-    static func generateKeys(startOctave: Int = 2, endOctave: Int = 6) -> [PianoKey] {
-        var keys: [PianoKey] = []
-
-        for octave in startOctave ... endOctave {
-            for note in PianoNote.allCases {
-                keys.append(PianoKey(note: note, octave: octave))
-            }
-        }
-
-        return keys
-    }
-}
