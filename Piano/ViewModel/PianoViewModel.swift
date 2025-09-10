@@ -66,6 +66,11 @@ class PianoViewModel {
     func isKeyPressed(_ key: PianoKey) -> Bool {
         pressedKeys.contains(key)
     }
-
-    // No per-octave navigation; full keyboard is always available.
+    
+    var totalKeyboardWidth: CGFloat {
+        let whiteKeyWidth: CGFloat = 50
+        let whiteKeySpacing: CGFloat = 1
+        let whiteKeyCount = whiteKeys.count
+        return CGFloat(whiteKeyCount) * whiteKeyWidth + CGFloat(whiteKeyCount - 1) * whiteKeySpacing
+    }
 }
