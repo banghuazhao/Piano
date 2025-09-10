@@ -9,26 +9,24 @@ import SwiftUI
 @Observable
 @MainActor
 class PianoViewModel {
-    
-    var isSustainOn: Bool = false
-    var currentOctave: Int = 4
-
-
     private var keys: [PianoKey] = []
     private var pressedKeys: Set<PianoKey> = []
     private let startOctave = 1
     private let endOctave = 7
-    
+
     private let audioEngine: AudioEngine
 
+    /// All keys across available octaves
     var pianoKeys: [PianoKey] {
-        keys.filter { $0.octave == currentOctave }
+        keys
     }
 
+    /// All white keys across all octaves in playing order
     var whiteKeys: [PianoKey] {
         pianoKeys.filter { !$0.isBlack }
     }
 
+    /// All black keys across all octaves in playing order
     var blackKeys: [PianoKey] {
         pianoKeys.filter { $0.isBlack }
     }
@@ -50,7 +48,7 @@ class PianoViewModel {
                 keys.append(PianoKey(note: note, octave: octave))
             }
         }
-        
+
         self.keys = keys
     }
 
@@ -63,24 +61,11 @@ class PianoViewModel {
 
     func keyReleased(_ key: PianoKey) {
         pressedKeys.remove(key)
-        if !isSustainOn {
-            audioEngine.stopNote(key.midiNote)
-        }
     }
 
     func isKeyPressed(_ key: PianoKey) -> Bool {
         pressedKeys.contains(key)
     }
 
-    // MARK: - Octave Control Methods
-
-    func increaseOctave() {
-        guard currentOctave < endOctave else { return }
-        currentOctave += 1
-    }
-
-    func decreaseOctave() {
-        guard currentOctave > startOctave else { return }
-        currentOctave -= 1
-    }
+    // No per-octave navigation; full keyboard is always available.
 }

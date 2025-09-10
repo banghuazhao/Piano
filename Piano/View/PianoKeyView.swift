@@ -46,7 +46,7 @@ struct PianoKeyView: View {
             .overlay(
                 VStack {
                     Spacer()
-                    Text(key.note.rawValue)
+                    Text(key.displayName)
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.black.opacity(0.6))
                         .padding(.bottom, 8)
@@ -61,28 +61,30 @@ struct PianoKeyView: View {
     }
     
     private var blackKeyView: some View {
-        RoundedRectangle(cornerRadius: 6)
-            .fill(Color.black)
-            .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(Color.black.opacity(0.3), lineWidth: 1)
-            )
-            .overlay(
-                VStack {
-                    Spacer()
-                    Text(key.note.rawValue)
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(.white.opacity(0.8))
-                        .padding(.bottom, 6)
-                }
-            )
-            .shadow(
-                color: isPressed ? Color.black.opacity(0.5) : Color.black.opacity(0.3),
-                radius: isPressed ? 1 : 3,
-                x: 0,
-                y: isPressed ? 1 : 2
-            )
-            .frame(height: 120) // Shorter height to appear raised above white keys
+        GeometryReader { geo in
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color.black)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.black.opacity(0.3), lineWidth: 1)
+                )
+                .overlay(
+                    VStack {
+                        Spacer()
+                        Text(key.displayName)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.white.opacity(0.8))
+                            .padding(.bottom, 6)
+                    }
+                )
+                .shadow(
+                    color: isPressed ? Color.black.opacity(0.5) : Color.black.opacity(0.3),
+                    radius: isPressed ? 1 : 3,
+                    x: 0,
+                    y: isPressed ? 1 : 2
+                )
+                .frame(height: geo.size.height / 2)
+        }
     }
     
     private var whiteKeyGradient: LinearGradient {
@@ -112,13 +114,19 @@ struct PianoKeyView: View {
         )
         PianoKeyView(
             key: PianoKey(note: .CSharp, octave: 4),
-            isPressed: true,
+            isPressed: false,
             onPress: {},
             onRelease: {}
         )
         PianoKeyView(
             key: PianoKey(note: .D, octave: 4),
-            isPressed: false,
+            isPressed: true,
+            onPress: {},
+            onRelease: {}
+        )
+        PianoKeyView(
+            key: PianoKey(note: .CSharp, octave: 4),
+            isPressed: true,
             onPress: {},
             onRelease: {}
         )

@@ -7,23 +7,14 @@ import SwiftUI
 
 struct PianoKeyboardView: View {
     @State private var viewModel = PianoViewModel()
+    @State private var scrollPosition: Double = 0.0
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Octave Controls
-            octaveControls
-            sustainControl
-            
-            // Piano Keyboard
-            ZStack(alignment: .topLeading) {
-                // White keys background
-                whiteKeysView
-                
-                // Black keys overlay
-                blackKeysView
+        ScrollViewReader { proxy in
+            VStack(spacing: 0) {
+                scrubber(proxy: proxy)
+                keyboardScrollView
             }
-            .frame(height: 200)
-            .padding(.horizontal, 16)
         }
         .background(
             LinearGradient(
@@ -34,94 +25,69 @@ struct PianoKeyboardView: View {
         )
     }
 
-    private var sustainControl: some View {
-        HStack(spacing: 12) {
-            Toggle(isOn: $viewModel.isSustainOn) {
-                Text("Sustain")
-                    .font(.subheadline)
-                    .foregroundColor(.primary)
-            }
-            .toggleStyle(SwitchToggleStyle(tint: .blue))
+    private func scrubber(proxy: ScrollViewProxy) -> some View {
+        HStack {
+            Text("Keyboard")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            Slider(value: $scrollPosition)
+                .onChange(of: scrollPosition) { _, newValue in
+                    let total = max(viewModel.whiteKeys.count - 1, 1)
+                    let index = Int(round(newValue * Double(total)))
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        proxy.scrollTo(index, anchor: .leading)
+                    }
+                }
         }
+        .padding(.horizontal, 16)
         .padding(.vertical, 8)
     }
-    
-    private var octaveControls: some View {
-        HStack {
-            Button(action: viewModel.decreaseOctave) {
-                Image(systemName: "minus.circle.fill")
-                    .font(.title2)
-                    .foregroundColor(.blue)
-            }
-            .disabled(viewModel.currentOctave <= 2)
-            
-            Text("Octave \(viewModel.currentOctave)")
-                .font(.headline)
-                .fontWeight(.semibold)
-                .foregroundColor(.primary)
-                .frame(minWidth: 100)
-            
-            Button(action: viewModel.increaseOctave) {
-                Image(systemName: "plus.circle.fill")
-                    .font(.title2)
-                    .foregroundColor(.blue)
-            }
-            .disabled(viewModel.currentOctave >= 6)
-        }
-        .padding(.vertical, 12)
-    }
-    
-    private var whiteKeysView: some View {
-        HStack(spacing: 2) {
-            ForEach(viewModel.whiteKeys) { key in
-                PianoKeyView(
-                    key: key,
-                    isPressed: viewModel.isKeyPressed(key),
-                    onPress: {
-                        viewModel.keyPressed(key)
-                    },
-                    onRelease: {
-                        viewModel.keyReleased(key)
+
+    private var keyboardScrollView: some View {
+        let whiteKeyWidth: CGFloat = 48
+        let spacing: CGFloat = 1
+        let blackKeyWidth: CGFloat = whiteKeyWidth * 0.6
+        let horizontalPadding: CGFloat = 16
+        let count = viewModel.whiteKeys.count
+        let contentWidth = CGFloat(count) * whiteKeyWidth + CGFloat(max(count - 1, 0)) * spacing + horizontalPadding * 2
+
+        return ScrollView(.horizontal, showsIndicators: false) {
+            ZStack(alignment: .topLeading) {
+                // White keys row
+                HStack(spacing: spacing) {
+                    ForEach(Array(viewModel.whiteKeys.enumerated()), id: \.offset) { index, whiteKey in
+                        PianoKeyView(
+                            key: whiteKey,
+                            isPressed: viewModel.isKeyPressed(whiteKey),
+                            onPress: { viewModel.keyPressed(whiteKey) },
+                            onRelease: { viewModel.keyReleased(whiteKey) }
+                        )
+                        .frame(width: whiteKeyWidth)
+                        .id(index)
                     }
-                )
-                .frame(maxWidth: .infinity)
-            }
-        }
-    }
-    
-    private var blackKeysView: some View {
-        GeometryReader { geometry in
-            let totalSpacing = CGFloat(viewModel.whiteKeys.count - 1) * 2
-            let whiteKeyWidth = (geometry.size.width - totalSpacing) / CGFloat(viewModel.whiteKeys.count)
-            let blackKeyWidth: CGFloat = whiteKeyWidth * 0.6
-            
-            ZStack {
-                ForEach(Array(viewModel.whiteKeys.enumerated()), id: \.element.id) { index, whiteKey in
+                }
+                .padding(.horizontal, horizontalPadding)
+
+                // Black keys overlay positioned globally across the row
+                ForEach(Array(viewModel.whiteKeys.enumerated()), id: \.offset) { index, whiteKey in
                     if let blackKey = whiteKey.nextBlackKey() {
-                        let whiteKeyPosition = CGFloat(index) * (whiteKeyWidth + 2)
-                        let blackKeyPosition = whiteKeyPosition + whiteKeyWidth * 0.75 // Position in the gap between white keys
-                        
                         PianoKeyView(
                             key: blackKey,
                             isPressed: viewModel.isKeyPressed(blackKey),
-                            onPress: {
-                                viewModel.keyPressed(blackKey)
-                            },
-                            onRelease: {
-                                viewModel.keyReleased(blackKey)
-                            }
+                            onPress: { viewModel.keyPressed(blackKey) },
+                            onRelease: { viewModel.keyReleased(blackKey) }
                         )
                         .frame(width: blackKeyWidth)
-                        .position(x: blackKeyPosition + blackKeyWidth / 2, y: geometry.size.height * 0.3) // Position higher to appear raised
-                        .zIndex(1)
+                        .offset(x: horizontalPadding + CGFloat(index) * (whiteKeyWidth + spacing) + whiteKeyWidth * 0.7, y: 0)
+                        .zIndex(10)
                     }
                 }
             }
+            .frame(width: contentWidth, alignment: .topLeading)
         }
     }
 }
 
-#Preview {
+#Preview(traits: .landscapeRight) {
     PianoKeyboardView()
-        .frame(height: 300)
 }
