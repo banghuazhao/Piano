@@ -31,6 +31,9 @@ class PianoViewModel {
         pianoKeys.filter { $0.isBlack }
     }
 
+    /// Normalized scroll position across the full keyboard [0, 1]
+    var scrollPosition: Double = 0.5
+
     // MARK: - Initialization
 
     init(audioEngine: AudioEngine = AudioEngine()) {

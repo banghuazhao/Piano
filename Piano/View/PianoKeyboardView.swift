@@ -29,23 +29,29 @@ struct PianoKeyboardView: View {
                     scrollAction = proxy.scrollTo
                     scrollToMiddle(scrollTo: proxy.scrollTo)
                 }
+                .onChange(of: viewModel.scrollPosition) { _, _ in
+                    scrollToPosition(viewModel.scrollPosition)
+                }
             }
         }
     }
     
     private var scrollSection: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 12) {
-                ForEach(1...7, id: \.self) { octave in
-                    OctaveButton(
-                        octave: octave,
-                        action: { scrollToOctave(octave) }
-                    )
+        HStack(spacing: 12) {
+            Slider(value: $viewModel.scrollPosition, in: 0...1)
+                .frame(minWidth: 160)
+                .onChange(of: viewModel.scrollPosition) {  _, _ in
+                    scrollToPosition(viewModel.scrollPosition)
                 }
+            ForEach(1...7, id: \.self) { octave in
+                OctaveButton(
+                    octave: octave,
+                    action: { scrollToOctave(octave) }
+                )
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
         }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
         .background(Color.black.opacity(0.05))
         .frame(height: 60)
     }
@@ -76,7 +82,6 @@ struct PianoKeyboardView: View {
                        viewModel.pianoKeys.contains(blackKey) {
                         HStack {
                             Spacer()
-//                                .frame(width: 35)
                             PianoKeyView(
                                 key: blackKey,
                                 isPressed: viewModel.isKeyPressed(blackKey),
@@ -97,8 +102,9 @@ struct PianoKeyboardView: View {
     private func scrollToMiddle(scrollTo: @escaping (AnyHashable, UnitPoint?) -> Void) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             withAnimation(.easeInOut(duration: 0.8)) {
-                if let middleKey = viewModel.whiteKeys.first(where: { $0.note == .F && $0.octave == 4 }) {
+                if let middleKey = viewModel.whiteKeys.first(where: { $0.note == .C && $0.octave == 4 }) {
                     scrollTo(middleKey.id, .center)
+                    updateScrollPosition(to: middleKey)
                 }
             }
         }
@@ -110,9 +116,32 @@ struct PianoKeyboardView: View {
         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
         impactFeedback.impactOccurred()
         
-        withAnimation(.linear(duration: 0.2)) {
+        withAnimation(.easeInOut(duration: 0.3)) {
             if let targetKey = viewModel.whiteKeys.first(where: { $0.note == .F && $0.octave == octave }) {
-                scrollAction(targetKey.id, .center)
+                scrollAction(targetKey.id, .leading)
+                updateScrollPosition(to: targetKey)
+            }
+        }
+    }
+
+    private func scrollToPosition(_ position: Double) {
+        guard let scrollAction else { return }
+        let clamped = max(0.0, min(1.0, position))
+        let count = viewModel.whiteKeys.count
+        guard count > 0 else { return }
+        let index = Int(round(clamped * Double(count - 1)))
+        let key = viewModel.whiteKeys[index]
+        withAnimation(.linear(duration: 0.15)) {
+            scrollAction(key.id, .center)
+        }
+    }
+
+    private func updateScrollPosition(to key: PianoKey) {
+        if let idx = viewModel.whiteKeys.firstIndex(where: { $0.id == key.id }) {
+            let denominator = max(1, viewModel.whiteKeys.count - 1)
+            let pos = Double(idx) / Double(denominator)
+            if abs(viewModel.scrollPosition - pos) > 0.001 {
+                viewModel.scrollPosition = pos
             }
         }
     }
