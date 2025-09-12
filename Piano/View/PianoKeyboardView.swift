@@ -43,7 +43,7 @@ struct PianoKeyboardView: View {
                 .onChange(of: viewModel.scrollPosition) {  _, _ in
                     scrollToPosition(viewModel.scrollPosition)
                 }
-            ForEach(1...7, id: \.self) { octave in
+            ForEach(viewModel.octaves, id: \.self) { octave in
                 OctaveButton(
                     octave: octave,
                     action: { scrollToOctave(octave) }
@@ -102,7 +102,7 @@ struct PianoKeyboardView: View {
     private func scrollToMiddle(scrollTo: @escaping (AnyHashable, UnitPoint?) -> Void) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             withAnimation(.easeInOut(duration: 0.8)) {
-                if let middleKey = viewModel.whiteKeys.first(where: { $0.note == .C && $0.octave == 4 }) {
+                if let middleKey = viewModel.middleAnchorKey() {
                     scrollTo(middleKey.id, .center)
                     updateScrollPosition(to: middleKey)
                 }
@@ -117,7 +117,7 @@ struct PianoKeyboardView: View {
         impactFeedback.impactOccurred()
         
         withAnimation(.easeInOut(duration: 0.3)) {
-            if let targetKey = viewModel.whiteKeys.first(where: { $0.note == .F && $0.octave == octave }) {
+            if let targetKey = viewModel.anchorKey(forOctave: octave) {
                 scrollAction(targetKey.id, .leading)
                 updateScrollPosition(to: targetKey)
             }
@@ -126,20 +126,14 @@ struct PianoKeyboardView: View {
 
     private func scrollToPosition(_ position: Double) {
         guard let scrollAction else { return }
-        let clamped = max(0.0, min(1.0, position))
-        let count = viewModel.whiteKeys.count
-        guard count > 0 else { return }
-        let index = Int(round(clamped * Double(count - 1)))
-        let key = viewModel.whiteKeys[index]
+        guard let key = viewModel.keyForPosition(position) else { return }
         withAnimation(.linear(duration: 0.15)) {
             scrollAction(key.id, .center)
         }
     }
 
     private func updateScrollPosition(to key: PianoKey) {
-        if let idx = viewModel.whiteKeys.firstIndex(where: { $0.id == key.id }) {
-            let denominator = max(1, viewModel.whiteKeys.count - 1)
-            let pos = Double(idx) / Double(denominator)
+        if let pos = viewModel.normalizedPosition(for: key) {
             if abs(viewModel.scrollPosition - pos) > 0.001 {
                 viewModel.scrollPosition = pos
             }
@@ -154,15 +148,15 @@ struct OctaveButton: View {
     var body: some View {
         Button(action: action) {
             VStack(spacing: 4) {
-                Text("C\(octave)")
+                Text("F\(octave)")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.primary)
                 
-                Text("Octave \(octave)")
+                Text("Octave\(octave)")
                     .font(.system(size: 10, weight: .regular))
                     .foregroundColor(.secondary)
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 8)
             .padding(.vertical, 8)
             .background(
                 RoundedRectangle(cornerRadius: 12)

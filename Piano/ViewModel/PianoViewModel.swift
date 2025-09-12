@@ -34,6 +34,38 @@ class PianoViewModel {
     /// Normalized scroll position across the full keyboard [0, 1]
     var scrollPosition: Double = 0.5
 
+    /// Available octave numbers in display order
+    var octaves: [Int] {
+        Array(startOctave...endOctave)
+    }
+
+    // MARK: - Scrolling Helpers (logic only)
+
+    /// Given a normalized position [0,1], return the nearest white key.
+    func keyForPosition(_ position: Double) -> PianoKey? {
+        guard !whiteKeys.isEmpty else { return nil }
+        let clamped = max(0.0, min(1.0, position))
+        let index = Int(round(clamped * Double(whiteKeys.count - 1)))
+        return whiteKeys[index]
+    }
+
+    /// Compute normalized position [0,1] for a given key within white keys.
+    func normalizedPosition(for key: PianoKey) -> Double? {
+        guard let idx = whiteKeys.firstIndex(where: { $0.id == key.id }) else { return nil }
+        let denominator = max(1, whiteKeys.count - 1)
+        return Double(idx) / Double(denominator)
+    }
+
+    /// Anchor key used when centering on appear (C4 by design).
+    func middleAnchorKey() -> PianoKey? {
+        whiteKeys.first(where: { $0.note == .F && $0.octave == 4 })
+    }
+
+    /// Anchor key used when jumping to an octave from controls (F-octave by design).
+    func anchorKey(forOctave octave: Int) -> PianoKey? {
+        whiteKeys.first(where: { $0.note == .F && $0.octave == octave })
+    }
+
     // MARK: - Initialization
 
     init(audioEngine: AudioEngine = AudioEngine()) {
