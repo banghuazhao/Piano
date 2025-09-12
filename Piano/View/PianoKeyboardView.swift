@@ -39,11 +39,22 @@ struct PianoKeyboardView: View {
     
     private var scrollSection: some View {
         HStack(spacing: 12) {
-            Slider(value: $viewModel.scrollPosition, in: 0...1)
-                .frame(minWidth: 160)
-                .onChange(of: viewModel.scrollPosition) {  _, _ in
-                    scrollToPosition(viewModel.scrollPosition)
-                }
+            ZStack {
+                Capsule(style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .stroke(Color.black.opacity(0.12), lineWidth: 0.5)
+                    )
+                    .shadow(color: .black.opacity(0.06), radius: 3, x: 0, y: 1)
+                Slider(value: $viewModel.scrollPosition, in: 0...1)
+                    .controlSize(.small)
+                    .padding(.horizontal, 12)
+                    .onChange(of: viewModel.scrollPosition) {  _, _ in
+                        scrollToPosition(viewModel.scrollPosition)
+                    }
+            }
+            .frame(minWidth: 180, idealWidth: 240, maxWidth: 320, minHeight: 32)
             ForEach(viewModel.octaves, id: \.self) { octave in
                 OctaveButton(
                     octave: octave,
