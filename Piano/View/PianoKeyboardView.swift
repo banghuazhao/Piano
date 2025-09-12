@@ -34,6 +34,7 @@ struct PianoKeyboardView: View {
                 }
             }
         }
+        .environment(viewModel)
     }
     
     private var scrollSection: some View {
@@ -46,6 +47,7 @@ struct PianoKeyboardView: View {
             ForEach(viewModel.octaves, id: \.self) { octave in
                 OctaveButton(
                     octave: octave,
+                    isSelected: viewModel.currentOctave == octave,
                     action: { scrollToOctave(octave) }
                 )
             }
@@ -143,6 +145,7 @@ struct PianoKeyboardView: View {
 
 struct OctaveButton: View {
     let octave: Int
+    let isSelected: Bool
     let action: () -> Void
     
     var body: some View {
@@ -160,11 +163,15 @@ struct OctaveButton: View {
             .padding(.vertical, 8)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.white)
+                    .fill(isSelected ? backgroundColor.opacity(0.8) : backgroundColor.opacity(0.3))
                     .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
             )
         }
         .buttonStyle(PlainButtonStyle())
+    }
+    
+    var backgroundColor: Color {
+        OctaveColor.color(for: octave)
     }
 }
 

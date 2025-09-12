@@ -9,37 +9,71 @@ import SwiftUI
 @Observable
 @MainActor
 class PianoViewModel {
-    private var keys: [PianoKey] = []
+    var pianoKeys: [PianoKey] = []
+    /// Normalized scroll position across the full keyboard [0, 1]
+    var scrollPosition: Double = 0.5
+
+    let octaves = [1, 2, 3, 4, 5, 6, 7]
     private var pressedKeys: Set<PianoKey> = []
-    private let startOctave = 1
-    private let endOctave = 7
 
     private let audioEngine: AudioEngine
 
-    /// All keys across available octaves
-    var pianoKeys: [PianoKey] {
-        keys
-    }
-
-    /// All white keys across all octaves in playing order
     var whiteKeys: [PianoKey] {
         pianoKeys.filter { !$0.isBlack }
     }
 
-    /// All black keys across all octaves in playing order
     var blackKeys: [PianoKey] {
         pianoKeys.filter { $0.isBlack }
     }
 
-    /// Normalized scroll position across the full keyboard [0, 1]
-    var scrollPosition: Double = 0.5
-
-    /// Available octave numbers in display order
-    var octaves: [Int] {
-        Array(startOctave...endOctave)
+    var currentOctave: Int? {
+        keyForPosition(scrollPosition)?.octave
     }
 
-    // MARK: - Scrolling Helpers (logic only)
+    // MARK: - Initialization
+
+    init(audioEngine: AudioEngine = AudioEngine()) {
+        self.audioEngine = audioEngine
+        setupKeys()
+    }
+
+    // MARK: - Setup Methods
+
+    private func setupKeys() {
+        var keys: [PianoKey] = []
+
+        for octave in octaves {
+            for note in PianoNote.allCases {
+                keys.append(PianoKey(note: note, octave: octave))
+            }
+        }
+
+        pianoKeys = keys
+    }
+
+    // MARK: - Key Interaction Methods
+
+    func keyPressed(_ key: PianoKey) {
+        pressedKeys.insert(key)
+        audioEngine.playNote(key.midiNote, velocity: 100)
+    }
+
+    func keyReleased(_ key: PianoKey) {
+        pressedKeys.remove(key)
+    }
+
+    func isKeyPressed(_ key: PianoKey) -> Bool {
+        pressedKeys.contains(key)
+    }
+    
+    var totalKeyboardWidth: CGFloat {
+        let whiteKeyWidth: CGFloat = 50
+        let whiteKeySpacing: CGFloat = 1
+        let whiteKeyCount = whiteKeys.count
+        return CGFloat(whiteKeyCount) * whiteKeyWidth + CGFloat(whiteKeyCount - 1) * whiteKeySpacing
+    }
+    
+    // MARK: - Scrolling
 
     /// Given a normalized position [0,1], return the nearest white key.
     func keyForPosition(_ position: Double) -> PianoKey? {
@@ -64,48 +98,5 @@ class PianoViewModel {
     /// Anchor key used when jumping to an octave from controls (F-octave by design).
     func anchorKey(forOctave octave: Int) -> PianoKey? {
         whiteKeys.first(where: { $0.note == .F && $0.octave == octave })
-    }
-
-    // MARK: - Initialization
-
-    init(audioEngine: AudioEngine = AudioEngine()) {
-        self.audioEngine = audioEngine
-        setupKeys()
-    }
-
-    // MARK: - Setup Methods
-
-    private func setupKeys() {
-        var keys: [PianoKey] = []
-
-        for octave in startOctave ... endOctave {
-            for note in PianoNote.allCases {
-                keys.append(PianoKey(note: note, octave: octave))
-            }
-        }
-
-        self.keys = keys
-    }
-
-    // MARK: - Key Interaction Methods
-
-    func keyPressed(_ key: PianoKey) {
-        pressedKeys.insert(key)
-        audioEngine.playNote(key.midiNote, velocity: 100)
-    }
-
-    func keyReleased(_ key: PianoKey) {
-        pressedKeys.remove(key)
-    }
-
-    func isKeyPressed(_ key: PianoKey) -> Bool {
-        pressedKeys.contains(key)
-    }
-    
-    var totalKeyboardWidth: CGFloat {
-        let whiteKeyWidth: CGFloat = 50
-        let whiteKeySpacing: CGFloat = 1
-        let whiteKeyCount = whiteKeys.count
-        return CGFloat(whiteKeyCount) * whiteKeyWidth + CGFloat(whiteKeyCount - 1) * whiteKeySpacing
     }
 }

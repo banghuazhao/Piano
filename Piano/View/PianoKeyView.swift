@@ -49,7 +49,12 @@ struct PianoKeyView: View {
                     Text(key.displayName)
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.black.opacity(0.6))
-                        .padding(.bottom, 8)
+                        .padding(8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(OctaveColor.color(for: key.octave).opacity(0.3))
+                        )
+                    Spacer().frame(height: 8)
                 }
             )
             .shadow(
@@ -75,6 +80,7 @@ struct PianoKeyView: View {
                             .font(.system(size: 10, weight: .medium))
                             .foregroundColor(.white.opacity(0.8))
                             .padding(.bottom, 6)
+                        Spacer().frame(height: 8)
                     }
                 )
                 .shadow(
