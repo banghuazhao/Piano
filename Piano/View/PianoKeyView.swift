@@ -21,7 +21,7 @@ struct PianoKeyView: View {
                 whiteKeyView
             }
         }
-        .scaleEffect(isPressed ? 0.95 : 1.0)
+        .scaleEffect(isPressed ? 0.98 : 1.0, anchor: .top)
         .animation(.easeInOut(duration: 0.1), value: isPressed)
         .gesture(
             DragGesture(minimumDistance: 0)
@@ -38,7 +38,8 @@ struct PianoKeyView: View {
     
     private var whiteKeyView: some View {
         RoundedRectangle(cornerRadius: 8)
-            .fill(whiteKeyGradient)
+            .fill(Color.white)
+            .fill(whiteKeyOverlayGradient)
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(Color.black.opacity(0.2), lineWidth: 1)
@@ -69,6 +70,7 @@ struct PianoKeyView: View {
         GeometryReader { geo in
             RoundedRectangle(cornerRadius: 6)
                 .fill(Color.black)
+                .fill(blackKeyOverlayGradient)
                 .overlay(
                     RoundedRectangle(cornerRadius: 6)
                         .stroke(Color.black.opacity(0.3), lineWidth: 1)
@@ -89,20 +91,36 @@ struct PianoKeyView: View {
                     x: 0,
                     y: isPressed ? 1 : 2
                 )
-                .frame(height: geo.size.height / 2)
+                .frame(height: geo.size.height * 0.6)
         }
     }
     
-    private var whiteKeyGradient: LinearGradient {
+    private var whiteKeyOverlayGradient: LinearGradient {
         if isPressed {
             return LinearGradient(
-                colors: [Color.white.opacity(0.9), Color.gray.opacity(0.1)],
+                colors: [Color.gray.opacity(0.1), Color.black.opacity(0.2)],
                 startPoint: .top,
                 endPoint: .bottom
             )
         } else {
             return LinearGradient(
-                colors: [Color.white, Color.gray.opacity(0.05)],
+                colors: [Color.gray.opacity(0.05), Color.gray.opacity(0.05)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
+    }
+    
+    private var blackKeyOverlayGradient: LinearGradient {
+        if isPressed {
+            return LinearGradient(
+                colors: [Color.white.opacity(0), Color.white.opacity(0.2)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        } else {
+            return LinearGradient(
+                colors: [Color.white.opacity(0.2), Color.white.opacity(0)],
                 startPoint: .top,
                 endPoint: .bottom
             )
