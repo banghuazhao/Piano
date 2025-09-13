@@ -8,6 +8,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @AppStorage("showKeyDisplayNames") private var showKeyDisplayNames: Bool = true
+    @AppStorage("hapticsEnabled") private var hapticsEnabled: Bool = false
     @Environment(\.dismiss) var dismiss
     
     var body: some View {
@@ -15,6 +16,11 @@ struct SettingsView: View {
             Form {
                 Section(header: Text("Display")) {
                     Toggle("Show Key Names", isOn: $showKeyDisplayNames)
+                        .toggleStyle(SwitchToggleStyle())
+                }
+                
+                Section(header: Text("Feedback")) {
+                    Toggle("Haptic Feedback", isOn: $hapticsEnabled)
                         .toggleStyle(SwitchToggleStyle())
                 }
             }

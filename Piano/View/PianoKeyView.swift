@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct PianoKeyView: View {
     let key: PianoKey
@@ -11,6 +12,7 @@ struct PianoKeyView: View {
     let onPress: () -> Void
     let onRelease: () -> Void
     @AppStorage("showKeyDisplayNames") private var showKeyDisplayNames: Bool = true
+    @AppStorage("hapticsEnabled") private var hapticsEnabled: Bool = true
 
     @State private var dragOffset: CGSize = .zero
     
@@ -28,6 +30,10 @@ struct PianoKeyView: View {
             DragGesture(minimumDistance: 0)
                 .onChanged { _ in
                     if !isPressed {
+                        if hapticsEnabled {
+                            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                            impactFeedback.impactOccurred()
+                        }
                         onPress()
                     }
                 }
