@@ -6,14 +6,14 @@
 import SwiftUI
 import UIKit
 
-struct PianoKeyboardView: View {
+struct PianoView: View {
     @State private var viewModel = PianoViewModel()
     @State private var scrollAction: ((AnyHashable, UnitPoint?) -> Void)?
-    
+
     var body: some View {
         VStack(spacing: 0) {
-            scrollSection
-            
+            topSection
+
             ScrollViewReader { proxy in
                 ScrollView(.horizontal) {
                     GeometryReader { geometry in
@@ -34,11 +34,19 @@ struct PianoKeyboardView: View {
                 }
             }
         }
-        .environment(viewModel)
+        .sheet(isPresented: $viewModel.showSettings) {
+            SettingsView()
+        }
     }
-    
-    private var scrollSection: some View {
+
+    private var topSection: some View {
         HStack(spacing: 12) {
+            Button {
+                viewModel.showSettings = true
+            } label: {
+                Image(systemName: "gearshape")
+            }
+
             ZStack {
                 Capsule(style: .continuous)
                     .fill(.ultraThinMaterial)
@@ -47,10 +55,10 @@ struct PianoKeyboardView: View {
                             .stroke(Color.black.opacity(0.12), lineWidth: 0.5)
                     )
                     .shadow(color: .black.opacity(0.06), radius: 3, x: 0, y: 1)
-                Slider(value: $viewModel.scrollPosition, in: 0...1)
+                Slider(value: $viewModel.scrollPosition, in: 0 ... 1)
                     .controlSize(.small)
                     .padding(.horizontal, 12)
-                    .onChange(of: viewModel.scrollPosition) {  _, _ in
+                    .onChange(of: viewModel.scrollPosition) { _, _ in
                         scrollToPosition(viewModel.scrollPosition)
                     }
             }
@@ -68,7 +76,7 @@ struct PianoKeyboardView: View {
         .background(Color.black.opacity(0.05))
         .frame(height: 60)
     }
-    
+
     private func whiteKeysView(geometry: GeometryProxy) -> some View {
         HStack(spacing: 1) {
             ForEach(viewModel.whiteKeys, id: \.id) { key in
@@ -83,14 +91,14 @@ struct PianoKeyboardView: View {
             }
         }
     }
-    
+
     private func blackKeysView(geometry: GeometryProxy) -> some View {
         HStack(spacing: 1) {
             ForEach(viewModel.whiteKeys, id: \.id) { whiteKey in
                 ZStack {
                     Color.clear
                         .frame(width: 50)
-                    
+
                     if let blackKey = whiteKey.nextBlackKey(),
                        viewModel.pianoKeys.contains(blackKey) {
                         HStack {
@@ -111,7 +119,7 @@ struct PianoKeyboardView: View {
             }
         }
     }
-    
+
     private func scrollToMiddle(scrollTo: @escaping (AnyHashable, UnitPoint?) -> Void) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             withAnimation(.easeInOut(duration: 0.8)) {
@@ -122,13 +130,13 @@ struct PianoKeyboardView: View {
             }
         }
     }
-    
+
     private func scrollToOctave(_ octave: Int) {
         guard let scrollAction else { return }
-        
+
         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
         impactFeedback.impactOccurred()
-        
+
         withAnimation(.easeInOut(duration: 0.3)) {
             if let targetKey = viewModel.anchorKey(forOctave: octave) {
                 scrollAction(targetKey.id, .leading)
@@ -158,14 +166,14 @@ struct OctaveButton: View {
     let octave: Int
     let isSelected: Bool
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             VStack(spacing: 4) {
                 Text("F\(octave)")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.primary)
-                
+
                 Text("Octave\(octave)")
                     .font(.system(size: 10, weight: .regular))
                     .foregroundColor(.secondary)
@@ -180,12 +188,12 @@ struct OctaveButton: View {
         }
         .buttonStyle(PlainButtonStyle())
     }
-    
+
     var backgroundColor: Color {
         OctaveColor.color(for: octave)
     }
 }
 
 #Preview(traits: .landscapeLeft) {
-    PianoKeyboardView()
+    PianoView()
 }

@@ -7,7 +7,33 @@
 import SwiftUI
 
 struct SettingsView: View {
+    @AppStorage("showKeyDisplayNames") private var showKeyDisplayNames: Bool = true
+    @Environment(\.dismiss) var dismiss
+    
     var body: some View {
-        EmptyView()
+        NavigationView {
+            Form {
+                Section(header: Text("Display")) {
+                    Toggle("Show Key Names", isOn: $showKeyDisplayNames)
+                        .toggleStyle(SwitchToggleStyle())
+                }
+            }
+            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+
+                }
+            }
+        }
     }
+}
+
+#Preview {
+    SettingsView()
 }

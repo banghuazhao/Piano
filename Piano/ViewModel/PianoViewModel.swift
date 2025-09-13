@@ -12,6 +12,7 @@ class PianoViewModel {
     var pianoKeys: [PianoKey] = []
     /// Normalized scroll position across the full keyboard [0, 1]
     var scrollPosition: Double = 0.5
+    var showSettings = false
 
     let octaves = [1, 2, 3, 4, 5, 6, 7]
     private var pressedKeys: Set<PianoKey> = []

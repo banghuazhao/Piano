@@ -10,7 +10,8 @@ struct PianoKeyView: View {
     let isPressed: Bool
     let onPress: () -> Void
     let onRelease: () -> Void
-    
+    @AppStorage("showKeyDisplayNames") private var showKeyDisplayNames: Bool = true
+
     @State private var dragOffset: CGSize = .zero
     
     var body: some View {
@@ -47,14 +48,16 @@ struct PianoKeyView: View {
             .overlay(
                 VStack {
                     Spacer()
-                    Text(key.displayName)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.black.opacity(0.6))
-                        .padding(8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(OctaveColor.color(for: key.octave).opacity(0.3))
-                        )
+                    if showKeyDisplayNames {
+                        Text(key.displayName)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.black.opacity(0.6))
+                            .padding(8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(OctaveColor.color(for: key.octave).opacity(0.3))
+                            )
+                    }
                     Spacer().frame(height: 8)
                 }
             )
@@ -78,10 +81,12 @@ struct PianoKeyView: View {
                 .overlay(
                     VStack {
                         Spacer()
-                        Text(key.displayName)
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(.white.opacity(0.8))
-                            .padding(.bottom, 6)
+                        if showKeyDisplayNames {
+                            Text(key.displayName)
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(.white.opacity(0.8))
+                                .padding(.bottom, 6)
+                        }
                         Spacer().frame(height: 8)
                     }
                 )
@@ -114,13 +119,13 @@ struct PianoKeyView: View {
     private var blackKeyOverlayGradient: LinearGradient {
         if isPressed {
             return LinearGradient(
-                colors: [Color.white.opacity(0), Color.white.opacity(0.2)],
+                colors: [Color.white.opacity(0), Color.white.opacity(0.3)],
                 startPoint: .top,
                 endPoint: .bottom
             )
         } else {
             return LinearGradient(
-                colors: [Color.white.opacity(0.2), Color.white.opacity(0)],
+                colors: [Color.white.opacity(0.3), Color.white.opacity(0)],
                 startPoint: .top,
                 endPoint: .bottom
             )
