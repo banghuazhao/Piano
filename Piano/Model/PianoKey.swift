@@ -22,6 +22,14 @@ struct PianoKey: Identifiable, Hashable {
     var displayName: String {
         "\(note.rawValue)\(octave)"
     }
+    
+    var firstKeyDisplayName: String? {
+        if note == .C {
+            displayName
+        } else {
+            nil
+        }
+    }
 
     func hash(into hasher: inout Hasher) {
         hasher.combine(note)

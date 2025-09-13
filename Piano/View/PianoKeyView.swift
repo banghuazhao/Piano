@@ -12,7 +12,8 @@ struct PianoKeyView: View {
     let onPress: () -> Void
     let onRelease: () -> Void
     @AppStorage("showKeyDisplayNames") private var showKeyDisplayNames: Bool = true
-    @AppStorage("hapticsEnabled") private var hapticsEnabled: Bool = true
+    @AppStorage("showFirstKeyNameForOctavesOnly") private var showFirstKeyNameForOctavesOnly: Bool = false
+    @AppStorage("hapticsEnabled") private var hapticsEnabled: Bool = false
 
     @State private var dragOffset: CGSize = .zero
     
@@ -55,14 +56,27 @@ struct PianoKeyView: View {
                 VStack {
                     Spacer()
                     if showKeyDisplayNames {
-                        Text(key.displayName)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.black.opacity(0.6))
-                            .padding(8)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(OctaveColor.color(for: key.octave).opacity(0.3))
-                            )
+                        if showFirstKeyNameForOctavesOnly {
+                            if let firstKeyDisplayName = key.firstKeyDisplayName {
+                                Text(firstKeyDisplayName)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.black.opacity(0.6))
+                                    .padding(8)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(OctaveColor.color(for: key.octave).opacity(0.3))
+                                    )
+                            }
+                        } else {
+                            Text(key.displayName)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.black.opacity(0.6))
+                                .padding(8)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(OctaveColor.color(for: key.octave).opacity(0.3))
+                                )
+                        }
                     }
                     Spacer().frame(height: 8)
                 }
@@ -88,10 +102,19 @@ struct PianoKeyView: View {
                     VStack {
                         Spacer()
                         if showKeyDisplayNames {
-                            Text(key.displayName)
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundColor(.white.opacity(0.8))
-                                .padding(.bottom, 6)
+                            if showFirstKeyNameForOctavesOnly {
+                                if let firstKeyDisplayName = key.firstKeyDisplayName {
+                                    Text(firstKeyDisplayName)
+                                        .font(.system(size: 10, weight: .medium))
+                                        .foregroundColor(.white.opacity(0.8))
+                                        .padding(.bottom, 6)
+                                }
+                            } else {
+                                Text(key.displayName)
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.8))
+                                    .padding(.bottom, 6)
+                            }
                         }
                         Spacer().frame(height: 8)
                     }

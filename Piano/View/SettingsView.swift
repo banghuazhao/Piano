@@ -8,6 +8,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @AppStorage("showKeyDisplayNames") private var showKeyDisplayNames: Bool = true
+    @AppStorage("showFirstKeyNameForOctavesOnly") private var showFirstKeyNameForOctavesOnly: Bool = false
     @AppStorage("hapticsEnabled") private var hapticsEnabled: Bool = false
     @Environment(\.dismiss) var dismiss
     
@@ -17,6 +18,10 @@ struct SettingsView: View {
                 Section(header: Text("Display")) {
                     Toggle("Show Key Names", isOn: $showKeyDisplayNames)
                         .toggleStyle(SwitchToggleStyle())
+                    if showKeyDisplayNames {
+                        Toggle("Show First Key Name For Octaves Only", isOn: $showFirstKeyNameForOctavesOnly)
+                            .toggleStyle(SwitchToggleStyle())
+                    }
                 }
                 
                 Section(header: Text("Feedback")) {

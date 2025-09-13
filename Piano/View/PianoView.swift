@@ -170,7 +170,7 @@ struct OctaveButton: View {
     var body: some View {
         Button(action: action) {
             VStack(spacing: 4) {
-                Text("F\(octave)")
+                Text("C\(octave)")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.primary)
 
