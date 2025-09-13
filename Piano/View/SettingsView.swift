@@ -10,6 +10,7 @@ struct SettingsView: View {
     @AppStorage("showKeyDisplayNames") private var showKeyDisplayNames: Bool = true
     @AppStorage("showFirstKeyNameForOctavesOnly") private var showFirstKeyNameForOctavesOnly: Bool = false
     @AppStorage("hapticsEnabled") private var hapticsEnabled: Bool = false
+    @AppStorage("keyWidth") private var keyWidth: Double = 50.0
     @Environment(\.dismiss) var dismiss
     
     var body: some View {
@@ -21,6 +22,17 @@ struct SettingsView: View {
                     if showKeyDisplayNames {
                         Toggle("Show First Key Name For Octaves Only", isOn: $showFirstKeyNameForOctavesOnly)
                             .toggleStyle(SwitchToggleStyle())
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Key Width")
+                            Spacer()
+                            Text("\(Int(keyWidth)) pt")
+                                .foregroundColor(.secondary)
+                        }
+                        Slider(value: $keyWidth, in: 30...80, step: 5)
+                            .accentColor(.blue)
                     }
                 }
                 

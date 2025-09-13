@@ -67,13 +67,6 @@ class PianoViewModel {
         pressedKeys.contains(key)
     }
     
-    var totalKeyboardWidth: CGFloat {
-        let whiteKeyWidth: CGFloat = 50
-        let whiteKeySpacing: CGFloat = 1
-        let whiteKeyCount = whiteKeys.count
-        return CGFloat(whiteKeyCount) * whiteKeyWidth + CGFloat(whiteKeyCount - 1) * whiteKeySpacing
-    }
-    
     // MARK: - Scrolling
 
     /// Given a normalized position [0,1], return the nearest white key.

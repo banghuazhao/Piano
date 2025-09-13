@@ -59,9 +59,11 @@ struct PianoKeyView: View {
                         if showFirstKeyNameForOctavesOnly {
                             if let firstKeyDisplayName = key.firstKeyDisplayName {
                                 Text(firstKeyDisplayName)
-                                    .font(.system(size: 12, weight: .medium))
-                                    .foregroundColor(.black.opacity(0.6))
-                                    .padding(8)
+                                    .font(.system(size: 11, weight: .regular))
+                                    .foregroundStyle(Color.black)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.5)
+                                    .padding(6)
                                     .background(
                                         RoundedRectangle(cornerRadius: 8)
                                             .fill(OctaveColor.color(for: key.octave).opacity(0.3))
@@ -69,9 +71,11 @@ struct PianoKeyView: View {
                             }
                         } else {
                             Text(key.displayName)
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.black.opacity(0.6))
-                                .padding(8)
+                                .font(.system(size: 11, weight: .regular))
+                                .foregroundStyle(Color.black)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.5)
+                                .padding(6)
                                 .background(
                                     RoundedRectangle(cornerRadius: 8)
                                         .fill(OctaveColor.color(for: key.octave).opacity(0.3))
@@ -105,13 +109,17 @@ struct PianoKeyView: View {
                             if showFirstKeyNameForOctavesOnly {
                                 if let firstKeyDisplayName = key.firstKeyDisplayName {
                                     Text(firstKeyDisplayName)
-                                        .font(.system(size: 10, weight: .medium))
+                                        .font(.system(size: 9, weight: .medium))
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.5)
                                         .foregroundColor(.white.opacity(0.8))
                                         .padding(.bottom, 6)
                                 }
                             } else {
                                 Text(key.displayName)
-                                    .font(.system(size: 10, weight: .medium))
+                                    .font(.system(size: 9, weight: .medium))
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.5)
                                     .foregroundColor(.white.opacity(0.8))
                                     .padding(.bottom, 6)
                             }

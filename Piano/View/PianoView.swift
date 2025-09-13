@@ -8,7 +8,14 @@ import UIKit
 
 struct PianoView: View {
     @State private var viewModel = PianoViewModel()
+    @AppStorage("keyWidth") private var keyWidth: Double = 50.0
     @State private var scrollAction: ((AnyHashable, UnitPoint?) -> Void)?
+
+    var totalKeyboardWidth: CGFloat {
+        let whiteKeySpacing: CGFloat = 1
+        let whiteKeyCount = viewModel.whiteKeys.count
+        return CGFloat(whiteKeyCount) * keyWidth + CGFloat(whiteKeyCount - 1) * whiteKeySpacing
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -22,8 +29,7 @@ struct PianoView: View {
                             blackKeysView(geometry: geometry)
                         }
                     }
-                    .frame(width: viewModel.totalKeyboardWidth)
-                    .background(Color.gray.opacity(0.1))
+                    .frame(width: totalKeyboardWidth)
                 }
                 .onAppear {
                     scrollAction = proxy.scrollTo
@@ -73,7 +79,6 @@ struct PianoView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
-        .background(Color.black.opacity(0.05))
         .frame(height: 60)
     }
 
@@ -86,7 +91,7 @@ struct PianoView: View {
                     onPress: { viewModel.keyPressed(key) },
                     onRelease: { viewModel.keyReleased(key) }
                 )
-                .frame(width: 50)
+                .frame(width: keyWidth)
                 .id(key.id)
             }
         }
@@ -95,27 +100,26 @@ struct PianoView: View {
     private func blackKeysView(geometry: GeometryProxy) -> some View {
         HStack(spacing: 1) {
             ForEach(viewModel.whiteKeys, id: \.id) { whiteKey in
-                ZStack {
-                    Color.clear
-                        .frame(width: 50)
-
-                    if let blackKey = whiteKey.nextBlackKey(),
-                       viewModel.pianoKeys.contains(blackKey) {
-                        HStack {
-                            Spacer()
-                            PianoKeyView(
-                                key: blackKey,
-                                isPressed: viewModel.isKeyPressed(blackKey),
-                                onPress: { viewModel.keyPressed(blackKey) },
-                                onRelease: { viewModel.keyReleased(blackKey) }
-                            )
-                            .frame(width: 30)
-                            .zIndex(1)
-                            Spacer()
+                Color.clear
+                    .frame(width: keyWidth)
+                    .overlay {
+                        if let blackKey = whiteKey.nextBlackKey(),
+                           viewModel.pianoKeys.contains(blackKey) {
+                            HStack {
+                                Spacer()
+                                PianoKeyView(
+                                    key: blackKey,
+                                    isPressed: viewModel.isKeyPressed(blackKey),
+                                    onPress: { viewModel.keyPressed(blackKey) },
+                                    onRelease: { viewModel.keyReleased(blackKey) }
+                                )
+                                .frame(width: keyWidth * 0.6)
+                                .zIndex(1)
+                                Spacer()
+                            }
+                            .offset(x: keyWidth / 2)
                         }
-                        .offset(x: 25)
                     }
-                }
             }
         }
     }
