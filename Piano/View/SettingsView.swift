@@ -31,7 +31,7 @@ struct SettingsView: View {
                             Text("\(Int(keyWidth)) pt")
                                 .foregroundColor(.secondary)
                         }
-                        Slider(value: $keyWidth, in: 30...80, step: 5)
+                        Slider(value: $keyWidth, in: 30...90, step: 5)
                             .accentColor(.blue)
                     }
                 }

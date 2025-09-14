@@ -30,6 +30,7 @@ struct PianoView: View {
                         }
                     }
                     .frame(width: totalKeyboardWidth)
+                    .frame(maxHeight: 800)
                 }
                 .onAppear {
                     scrollAction = proxy.scrollTo

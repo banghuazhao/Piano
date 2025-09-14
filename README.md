@@ -1,4 +1,4 @@
-## 🎹 Piano
+## 🎹 PianoFlow
 
 A modern, responsive iOS piano keyboard built with SwiftUI and AVAudioEngine. Features a scrollable 7-octave keyboard with customizable settings, haptic feedback, and realistic piano sound using SoundFont technology.
 
@@ -32,8 +32,8 @@ A modern, responsive iOS piano keyboard built with SwiftUI and AVAudioEngine. Fe
 ### 🚀 Getting Started
 1. 📥 Clone the repository
 ```bash
-git clone https://github.com/banghuazhao/Piano.git
-cd Piano
+git clone https://github.com/banghuazhao/PianoFlow.git
+cd PianoFlow
 ```
 2. 🔧 Open the project in Xcode
 ```bash
@@ -92,4 +92,4 @@ No license file is included yet. If you intend to use this project beyond person
 - ©️ Copyright Apps Bay Limited. All rights reserved.
 
 ### 🔗 Links
-- 📦 Repository: `https://github.com/banghuazhao/Piano`
+- 📦 Repository: `https://github.com/banghuazhao/PianoFlow`
