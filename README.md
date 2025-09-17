@@ -4,6 +4,10 @@ A modern, responsive iOS piano keyboard built with SwiftUI and AVAudioEngine. Fe
 
 <img src="screenshots/1.png" alt="Piano screenshot" width="480" />
 
+### 📲 Download on the App Store
+
+- iOS: [PianoFlow on the App Store](https://apps.apple.com/us/app/pianoflow-keyboard/id6752531110)
+
 ### ✨ Features
 - **🎹 7-Octave Keyboard**: Full piano range from C1 to B7 with smooth horizontal scrolling
 - **🧭 Interactive Navigation**: Octave buttons and scroll slider for quick navigation
@@ -93,3 +97,4 @@ No license file is included yet. If you intend to use this project beyond person
 
 ### 🔗 Links
 - 📦 Repository: `https://github.com/banghuazhao/PianoFlow`
+- 🛍️ App Store: `https://apps.apple.com/us/app/pianoflow-keyboard/id6752531110`
