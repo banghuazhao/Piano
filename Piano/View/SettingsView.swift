@@ -2,58 +2,109 @@
 // Created by Banghua Zhao on 12/09/2025
 // Copyright Apps Bay Limited. All rights reserved.
 //
-  
-
 import SwiftUI
 
 struct SettingsView: View {
-    @AppStorage("showKeyDisplayNames") private var showKeyDisplayNames: Bool = true
-    @AppStorage("showFirstKeyNameForOctavesOnly") private var showFirstKeyNameForOctavesOnly: Bool = false
-    @AppStorage("hapticsEnabled") private var hapticsEnabled: Bool = false
-    @AppStorage("keyWidth") private var keyWidth: Double = 50.0
-    @Environment(\.dismiss) var dismiss
-    
+    @AppStorage("showKeyDisplayNames") private var showKeyDisplayNames = true
+    @AppStorage("showFirstKeyNameForOctavesOnly") private var showFirstKeyNameForOctavesOnly = false
+    @AppStorage("hapticsEnabled") private var hapticsEnabled = false
+    @AppStorage("keyWidth") private var keyWidth = 50.0
+    @AppStorage("masterVolume") private var masterVolume = 0.85
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var showingResetConfirmation = false
+
     var body: some View {
-        NavigationView {
-            Form {
-                Section(header: Text("Display")) {
-                    Toggle("Show Key Names", isOn: $showKeyDisplayNames)
-                        .toggleStyle(SwitchToggleStyle())
-                    if showKeyDisplayNames {
-                        Toggle("Show First Key Name For Octaves Only", isOn: $showFirstKeyNameForOctavesOnly)
-                            .toggleStyle(SwitchToggleStyle())
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Key Width")
-                            Spacer()
-                            Text("\(Int(keyWidth)) pt")
-                                .foregroundColor(.secondary)
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    SettingsHeaderView()
+
+                    SettingsPanel(title: "Keyboard", subtitle: "Make every note easy to find", symbol: "pianokeys") {
+                        SettingsToggleRow(
+                            title: "Key labels",
+                            subtitle: "Show note names on the keys",
+                            symbol: "textformat",
+                            isOn: $showKeyDisplayNames
+                        )
+
+                        if showKeyDisplayNames {
+                            Divider().overlay(PianoTheme.divider)
+                            SettingsToggleRow(
+                                title: "Octave labels only",
+                                subtitle: "Keep only the first note of each octave labeled",
+                                symbol: "number",
+                                isOn: $showFirstKeyNameForOctavesOnly
+                            )
                         }
-                        Slider(value: $keyWidth, in: 30...90, step: 5)
-                            .accentColor(.blue)
-                    }
-                }
-                
-                Section(header: Text("Feedback")) {
-                    Toggle("Haptic Feedback", isOn: $hapticsEnabled)
-                        .toggleStyle(SwitchToggleStyle())
-                }
-            }
-            .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
+
+                        Divider().overlay(PianoTheme.divider)
+                        SettingsKeyWidthControl(keyWidth: $keyWidth)
                     }
 
+                    SettingsPanel(title: "Playing feel", subtitle: "Shape your sound and touch", symbol: "hand.tap") {
+                        SettingsToggleRow(
+                            title: "Touch feedback",
+                            subtitle: "Feel a gentle response with each note",
+                            symbol: "waveform.path",
+                            isOn: $hapticsEnabled
+                        )
+
+                        Divider().overlay(PianoTheme.divider)
+                        SettingsPianoVolumeControl(volume: $masterVolume)
+                    }
+
+                    Button("Restore default settings", systemImage: "arrow.counterclockwise") {
+                        showingResetConfirmation = true
+                    }
+                    .font(.subheadline)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .foregroundStyle(PianoTheme.secondary)
+                    .accessibilityHint("Resets key labels, key width, touch feedback, and piano volume")
+                }
+                .frame(maxWidth: 740)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 20)
+            }
+            .background(PianoTheme.background.ignoresSafeArea())
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(PianoTheme.background, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("PIANO SETTINGS")
+                        .font(.caption.bold())
+                        .tracking(2)
+                        .foregroundStyle(PianoTheme.secondary)
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done", action: dismiss.callAsFunction)
+                        .bold()
                 }
             }
+            .confirmationDialog(
+                "Restore default settings?",
+                isPresented: $showingResetConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Restore Defaults", role: .destructive, action: restoreDefaults)
+            } message: {
+                Text("Your keyboard preferences will return to their original values.")
+            }
         }
+        .tint(PianoTheme.brass)
+        .preferredColorScheme(.dark)
+        .presentationDragIndicator(.visible)
+    }
+
+    private func restoreDefaults() {
+        showKeyDisplayNames = true
+        showFirstKeyNameForOctavesOnly = false
+        hapticsEnabled = false
+        keyWidth = 50
+        masterVolume = 0.85
     }
 }
 

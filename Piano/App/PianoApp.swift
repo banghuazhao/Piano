@@ -27,9 +27,6 @@ struct PianoApp: App {
                         openAd.appHasEnterBackgroundBefore = true
                     }
                 }
-                .onAppear {
-                    AdManager.requestATTPermission(with: 3)
-                }
         }
     }
 }

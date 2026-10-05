@@ -6,10 +6,12 @@
 import Foundation
 
 struct PianoKey: Identifiable, Hashable {
-    let id = UUID()
     let note: PianoNote
     let octave: Int
     var isPressed: Bool = false
+
+    /// MIDI pitch is stable across reconstructed keys and uniquely identifies the 88-key range.
+    var id: UInt8 { midiNote }
 
     var isBlack: Bool {
         note.isBlack

@@ -1,201 +1,274 @@
-//
-// Created by Banghua Zhao on 04/09/2025
-// Copyright Apps Bay Limited. All rights reserved.
-//
-
 import SwiftUI
 import UIKit
 
 struct PianoView: View {
     @State private var viewModel = PianoViewModel()
-    @AppStorage("keyWidth") private var keyWidth: Double = 50.0
+    @State private var studio = PerformanceStudio()
+    @State private var metronome = MetronomeService()
     @State private var scrollAction: ((AnyHashable, UnitPoint?) -> Void)?
+    @State private var navigatorPosition = 0.5
+    @State private var showLibrary = false
+    @State private var showTempo = false
 
-    var totalKeyboardWidth: CGFloat {
-        let whiteKeySpacing: CGFloat = 1
-        let whiteKeyCount = viewModel.whiteKeys.count
-        return CGFloat(whiteKeyCount) * keyWidth + CGFloat(whiteKeyCount - 1) * whiteKeySpacing
-    }
+    @AppStorage("keyWidth") private var keyWidth = 50.0
+    @AppStorage("hapticsEnabled") private var hapticsEnabled = false
+    @AppStorage("showKeyDisplayNames") private var showKeyDisplayNames = true
+    @AppStorage("showFirstKeyNameForOctavesOnly") private var octaveNamesOnly = false
+    @AppStorage("masterVolume") private var masterVolume = 0.85
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 0) {
-            topSection
+                PianoToolbar(
+                    chordName: ChordDetector.name(for: viewModel.pressedMIDINotes),
+                    isRecording: studio.isRecording,
+                    hasTake: !studio.takes.isEmpty,
+                    isPlaying: studio.playingTakeID != nil,
+                    sustainEnabled: viewModel.sustainEnabled,
+                    metronomeRunning: metronome.isRunning,
+                    bpm: metronome.bpm,
+                    onRecord: toggleRecording,
+                    onPlay: togglePlayback,
+                    onLibrary: { showLibrary = true },
+                    onSustain: toggleSustain,
+                    onMetronome: toggleMetronome,
+                    onTempo: { showTempo = true },
+                    onSettings: { viewModel.showSettings = true }
+                )
 
-            ScrollViewReader { proxy in
-                ScrollView(.horizontal) {
-                    GeometryReader { geometry in
-                        ZStack {
-                            whiteKeysView(geometry: geometry)
-                            blackKeysView(geometry: geometry)
-                        }
+                KeyboardNavigator(
+                    position: $navigatorPosition,
+                    octaves: viewModel.octaves,
+                    currentOctave: viewModel.currentOctave,
+                    onOctave: jumpToOctave
+                )
+
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [PianoTheme.felt, PianoTheme.background],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .frame(height: 10)
+                    .overlay(alignment: .bottom) {
+                        Rectangle()
+                            .fill(PianoTheme.brass.opacity(0.55))
+                            .frame(height: 1)
                     }
-                    .frame(width: totalKeyboardWidth)
-                    .frame(maxHeight: 800)
+
+                GeometryReader { keyArea in
+                    let showsMusicStand = keyArea.size.height > 700
+                        && keyArea.size.height > keyArea.size.width
+                    let keyboardHeight = showsMusicStand
+                        ? min(500, keyArea.size.height * 0.52)
+                        : keyArea.size.height
+
+                    VStack(spacing: 0) {
+                        if showsMusicStand {
+                            PortraitPracticeStand(
+                                chordName: ChordDetector.name(for: viewModel.pressedMIDINotes),
+                                takeCount: studio.takes.count,
+                                isRecording: studio.isRecording,
+                                onRecord: toggleRecording,
+                                onLibrary: { showLibrary = true }
+                            )
+                        }
+                        keyboard(height: keyboardHeight)
+                            .frame(height: keyboardHeight)
+                    }
                 }
-                .onAppear {
-                    scrollAction = proxy.scrollTo
-                    scrollToMiddle(scrollTo: proxy.scrollTo)
-                }
-                .onChange(of: viewModel.scrollPosition) { _, _ in
-                    scrollToPosition(viewModel.scrollPosition)
-                }
-            }
+
+                Rectangle()
+                    .fill(PianoTheme.background)
+                    .frame(height: 4)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(PianoTheme.background.ignoresSafeArea())
+        .preferredColorScheme(.dark)
         .sheet(isPresented: $viewModel.showSettings) {
             SettingsView()
         }
-    }
-
-    private var topSection: some View {
-        HStack(spacing: 12) {
-            Button {
-                viewModel.showSettings = true
-            } label: {
-                Image(systemName: "gearshape")
-            }
-
-            ZStack {
-                Capsule(style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .overlay(
-                        Capsule(style: .continuous)
-                            .stroke(Color.black.opacity(0.12), lineWidth: 0.5)
-                    )
-                    .shadow(color: .black.opacity(0.06), radius: 3, x: 0, y: 1)
-                Slider(value: $viewModel.scrollPosition, in: 0 ... 1)
-                    .controlSize(.small)
-                    .padding(.horizontal, 12)
-                    .onChange(of: viewModel.scrollPosition) { _, _ in
-                        scrollToPosition(viewModel.scrollPosition)
-                    }
-            }
-            .frame(minWidth: 180, idealWidth: 240, maxWidth: 320, minHeight: 32)
-            ForEach(viewModel.octaves, id: \.self) { octave in
-                OctaveButton(
-                    octave: octave,
-                    isSelected: viewModel.currentOctave == octave,
-                    action: { scrollToOctave(octave) }
-                )
-            }
+        .sheet(isPresented: $showLibrary) {
+            PerformanceLibraryView(studio: studio, onPlay: playTake, onStop: stopPlayback)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
-        .frame(height: 60)
-    }
-
-    private func whiteKeysView(geometry: GeometryProxy) -> some View {
-        HStack(spacing: 1) {
-            ForEach(viewModel.whiteKeys, id: \.id) { key in
-                PianoKeyView(
-                    key: key,
-                    isPressed: viewModel.isKeyPressed(key),
-                    onPress: { viewModel.keyPressed(key) },
-                    onRelease: { viewModel.keyReleased(key) }
-                )
-                .frame(width: keyWidth)
-                .id(key.id)
-            }
+        .popover(isPresented: $showTempo) {
+            TempoPopoverView(metronome: metronome)
+        }
+        .onChange(of: navigatorPosition) { _, position in
+            viewModel.scrollPosition = position
+            scrollToPosition(position)
+        }
+        .onAppear { viewModel.setMasterVolume(masterVolume) }
+        .onChange(of: masterVolume) { _, volume in
+            viewModel.setMasterVolume(volume)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active { endActiveSession() }
         }
     }
 
-    private func blackKeysView(geometry: GeometryProxy) -> some View {
-        HStack(spacing: 1) {
-            ForEach(viewModel.whiteKeys, id: \.id) { whiteKey in
-                Color.clear
-                    .frame(width: keyWidth)
-                    .overlay {
-                        if let blackKey = whiteKey.nextBlackKey(),
-                           viewModel.pianoKeys.contains(blackKey) {
-                            HStack {
-                                Spacer()
-                                PianoKeyView(
-                                    key: blackKey,
-                                    isPressed: viewModel.isKeyPressed(blackKey),
-                                    onPress: { viewModel.keyPressed(blackKey) },
-                                    onRelease: { viewModel.keyReleased(blackKey) }
-                                )
-                                .frame(width: keyWidth * 0.6)
-                                .zIndex(1)
-                                Spacer()
-                            }
-                            .offset(x: keyWidth / 2)
+    private func keyboard(height: CGFloat) -> some View {
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal) {
+                ZStack(alignment: .topLeading) {
+                    HStack(spacing: 1) {
+                        ForEach(viewModel.whiteKeys) { key in
+                            PianoKeyView(
+                                key: key,
+                                isPressed: viewModel.isKeyPressed(key),
+                                showLabels: showKeyDisplayNames,
+                                octaveNamesOnly: octaveNamesOnly,
+                                onPress: { press(key) },
+                                onRelease: { release(key) }
+                            )
+                            .frame(width: keyWidth, height: height)
+                            .id(key.id)
                         }
                     }
-            }
-        }
-    }
 
-    private func scrollToMiddle(scrollTo: @escaping (AnyHashable, UnitPoint?) -> Void) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            withAnimation(.easeInOut(duration: 0.8)) {
-                if let middleKey = viewModel.middleAnchorKey() {
-                    scrollTo(middleKey.id, .center)
-                    updateScrollPosition(to: middleKey)
+                    HStack(spacing: 1) {
+                        ForEach(viewModel.whiteKeys) { key in
+                            Color.clear
+                                .frame(width: keyWidth, height: height)
+                                .overlay(alignment: .topTrailing) {
+                                    if let blackKey = key.nextBlackKey() {
+                                        PianoKeyView(
+                                            key: blackKey,
+                                            isPressed: viewModel.isKeyPressed(blackKey),
+                                            showLabels: showKeyDisplayNames,
+                                            octaveNamesOnly: octaveNamesOnly,
+                                            onPress: { press(blackKey) },
+                                            onRelease: { release(blackKey) }
+                                        )
+                                        .frame(width: keyWidth * 0.62, height: height)
+                                        .offset(x: keyWidth * 0.31)
+                                    }
+                                }
+                        }
+                    }
+                }
+                .frame(width: totalKeyboardWidth, height: height)
+                .overlay {
+                    KeyboardTouchSurface(
+                        whiteKeys: viewModel.whiteKeys,
+                        keyWidth: keyWidth,
+                        onPress: press,
+                        onRelease: release
+                    )
+                }
+            }
+            .scrollIndicators(.hidden)
+            .scrollDisabled(true)
+            .clipped()
+            .background(PianoTheme.background)
+            .onAppear {
+                scrollAction = proxy.scrollTo
+                Task { @MainActor in
+                    await Task.yield()
+                    if let middleKey = viewModel.middleAnchorKey() {
+                        proxy.scrollTo(middleKey.id, anchor: .center)
+                        navigatorPosition = viewModel.normalizedPosition(for: middleKey) ?? 0.5
+                    }
                 }
             }
         }
     }
 
-    private func scrollToOctave(_ octave: Int) {
-        guard let scrollAction else { return }
+    private var totalKeyboardWidth: CGFloat {
+        let count = viewModel.whiteKeys.count
+        return CGFloat(count) * keyWidth + CGFloat(max(0, count - 1))
+    }
 
-        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-        impactFeedback.impactOccurred()
+    private func press(_ key: PianoKey) {
+        guard viewModel.keyPressed(key) else { return }
+        PianoSessionActivity.markPlayed()
+        studio.capture(note: key.midiNote, isNoteOn: true)
+        if hapticsEnabled {
+            UISelectionFeedbackGenerator().selectionChanged()
+        }
+    }
 
-        withAnimation(.easeInOut(duration: 0.3)) {
-            if let targetKey = viewModel.anchorKey(forOctave: octave) {
-                scrollAction(targetKey.id, .leading)
-                updateScrollPosition(to: targetKey)
-            }
+    private func release(_ key: PianoKey) {
+        if viewModel.keyReleased(key) {
+            studio.capture(note: key.midiNote, isNoteOn: false)
         }
     }
 
     private func scrollToPosition(_ position: Double) {
-        guard let scrollAction else { return }
-        guard let key = viewModel.keyForPosition(position) else { return }
-        withAnimation(.linear(duration: 0.15)) {
-            scrollAction(key.id, .center)
+        guard let target = viewModel.keyForPosition(position), let scrollAction else { return }
+        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) {
+            scrollAction(target.id, .center)
         }
     }
 
-    private func updateScrollPosition(to key: PianoKey) {
-        if let pos = viewModel.normalizedPosition(for: key) {
-            if abs(viewModel.scrollPosition - pos) > 0.001 {
-                viewModel.scrollPosition = pos
-            }
-        }
-    }
-}
-
-struct OctaveButton: View {
-    let octave: Int
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 4) {
-                Text("C\(octave)")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.primary)
-
-                Text("Octave\(octave)")
-                    .font(.system(size: 10, weight: .regular))
-                    .foregroundColor(.secondary)
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(isSelected ? backgroundColor.opacity(0.8) : backgroundColor.opacity(0.3))
-                    .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
-            )
-        }
-        .buttonStyle(PlainButtonStyle())
+    private func jumpToOctave(_ octave: Int) {
+        guard let target = viewModel.anchorKey(forOctave: octave),
+              let position = viewModel.normalizedPosition(for: target) else { return }
+        navigatorPosition = position
+        if hapticsEnabled { UISelectionFeedbackGenerator().selectionChanged() }
     }
 
-    var backgroundColor: Color {
-        OctaveColor.color(for: octave)
+    private func toggleRecording() {
+        PianoSessionActivity.markPlayed()
+        if studio.isRecording {
+            studio.finishRecording()
+        } else {
+            stopPlayback()
+            studio.beginRecording()
+            studio.captureSustain(viewModel.sustainEnabled)
+        }
+    }
+
+    private func togglePlayback() {
+        if studio.playingTakeID != nil {
+            stopPlayback()
+        } else if let take = studio.takes.first {
+            playTake(take)
+        }
+    }
+
+    private func playTake(_ take: PerformanceTake) {
+        PianoSessionActivity.markPlayed()
+        if studio.isRecording { studio.finishRecording() }
+        studio.play(
+            take,
+            noteOn: { _ = viewModel.playbackNoteOn($0) },
+            noteOff: { _ = viewModel.playbackNoteOff($0) },
+            sustain: { viewModel.setPlaybackSustain($0) }
+        )
+    }
+
+    private func stopPlayback() {
+        studio.stopPlayback()
+        viewModel.stopPlaybackNotes()
+    }
+
+    private func toggleSustain() {
+        let enabled = !viewModel.sustainEnabled
+        viewModel.setSustain(enabled)
+        studio.captureSustain(enabled)
+    }
+
+    private func toggleMetronome() {
+        PianoSessionActivity.markPlayed()
+        if metronome.isRunning {
+            metronome.stop()
+        } else {
+            metronome.start(bpm: metronome.bpm)
+        }
+    }
+
+    private func endActiveSession() {
+        if studio.isRecording || studio.playingTakeID != nil || metronome.isRunning {
+            PianoSessionActivity.markPlayed()
+        }
+        if studio.isRecording { studio.finishRecording() }
+        stopPlayback()
+        metronome.stop()
+        viewModel.stopAllNotes()
     }
 }
 

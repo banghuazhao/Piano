@@ -1,19 +1,21 @@
 ## 🎹 PianoFlow
 
-A modern, responsive iOS piano keyboard built with SwiftUI and AVAudioEngine. Features a scrollable 7-octave keyboard with customizable settings, haptic feedback, and realistic piano sound using SoundFont technology.
+A tactile iOS piano keyboard built with SwiftUI and AVAudioEngine. Play the full 88-key A0–C8 range with SoundFont piano audio, multi-touch chords, sustain, a metronome, and saved MIDI performances.
 
-<img src="screenshots/1.png" alt="Piano screenshot" width="480" />
+<img src="screenshots/pianoflow-premium.jpg" alt="PianoFlow instrument view" width="720" />
 
 ### 📲 Download on the App Store
 
 - iOS: [PianoFlow on the App Store](https://apps.apple.com/us/app/pianoflow-keyboard/id6752531110)
 
 ### ✨ Features
-- **🎹 7-Octave Keyboard**: Full piano range from C1 to B7 with smooth horizontal scrolling
-- **🧭 Interactive Navigation**: Octave buttons and scroll slider for quick navigation
-- **⚙️ Customizable Settings**: Adjustable key width, key name display options, and haptic feedback
-- **🎵 Realistic Audio**: SoundFont-backed piano sound with low-latency playback
-- **📱 Modern UI**: SwiftUI interface with responsive keys and smooth animations
+- **🎹 88-key keyboard**: The acoustic piano range, A0 through C8, with independent finger tracking for chords and glissandos
+- **🧭 Range navigation**: Octave shortcuts and a range slider keep navigation separate from the playing surface
+- **⚙️ Customizable Settings**: Adjustable key width, key labels, piano volume, and haptic feedback
+- **🎵 Expressive playing**: SoundFont-backed piano audio, balanced note release, sustain, and a live chord readout
+- **⏱️ Practice tools**: Audible metronome with adjustable tempo, meter, and click volume
+- **⏺️ Performance library**: Record note and sustain events, replay takes, and share Standard MIDI files
+- **📱 Instrument design**: Responsive ivory and ebony keys with a compact dark control panel
 - **🏗️ MVVM Architecture**: Clean separation with `@Observable` view models and Swift concurrency
 
 ### 🏗️ Architecture
@@ -25,12 +27,13 @@ A modern, responsive iOS piano keyboard built with SwiftUI and AVAudioEngine. Fe
 **🔄 Data Flow**:
 - 📱 `PianoView` renders the scrollable keyboard and handles user interactions
 - 🎚️ `PianoViewModel` manages key state, scroll position, and audio playback
-- 🔊 `AudioEngine` service handles audio session and SoundFont loading
+- 🔊 `AudioEngine` handles the audio session and SoundFont, while `MetronomeService` produces the click track
+- 💾 `PerformanceStudio` saves note events locally, replays takes, and uses `MIDIExporter` for sharing
 - ⚙️ `SettingsView` provides customization options with persistent storage
 
 ### 🛠️ Requirements
-- 💻 Xcode 15 or later
-- 📱 iOS 17 or later (SwiftUI `@Observable` macro)
+- 💻 Xcode 16 or later
+- 📱 iOS 17.6 or later
 - 🖥️ macOS Sonoma or later for development
 
 ### 🚀 Getting Started
@@ -54,32 +57,31 @@ Piano/
   Sound/               # 🎵 SoundFont file (`Piano.sf2`)
   Assets.xcassets/     # 🎨 App icons and colors
   Config/              # ⚙️ Build configurations
-  Model/               # 📋 `PianoKey`, `PianoNote`, `OctaveColor`
-  Service/             # 🔊 `AudioEngine` for audio playback
-  View/                # 📱 `PianoView`, `PianoKeyView`, `SettingsView`
+  Model/               # 📋 Piano notes, keys, and recorded takes
+  Service/             # 🔊 Sampler, metronome, recording, MIDI export, chord detection
+  View/                # 📱 Keyboard, instrument controls, library, and settings
   ViewModel/           # 🎛️ `PianoViewModel` with @Observable
 ```
 
 ### 🎼 Usage
-- **🎹 Playing Notes**: Tap any key to play piano notes with realistic sound
+- **🎹 Playing Notes**: Touch multiple keys for chords, or move a finger across keys for a glissando. The keyboard stays fixed while playing.
 - **🧭 Navigation**: 
-  - Use octave buttons (C1-C7) to jump to specific octaves
-  - Drag the scroll slider to navigate smoothly across the keyboard
-  - Swipe horizontally on the keyboard for fine control
+  - Use octave buttons (C1–C7) to jump across the full A0–C8 range
+  - Drag the range slider for fine control
+- **⏺️ Record and replay**: Tap Record, play, then tap Stop. Play replays the latest take; Takes opens saved performances and MIDI sharing.
+- **🎛️ Sustain and metronome**: Toggle them on the control panel. Tap the BPM display to adjust tempo, beats per bar, and click volume.
 - **⚙️ Settings**: Tap the gear icon to access:
-  - Key width adjustment (30-80 points)
+  - Key width adjustment (30–90 points)
   - Show/hide key names on keys
   - Toggle haptic feedback
   - Octave-specific key name display options
-- **🎨 Customization**: Replace `Piano.sf2` with your own SoundFont file to change the piano sound
+  - Piano volume
+- **🎨 Customization**: Replace `Piano.sf2` with a licensed SoundFont to change the piano sound.
 
 ### 🗺️ Roadmap
-- **👆 Multi-touch Support**: Enhanced chord playing with multiple simultaneous notes
-- **🎛️ Sustain Pedal**: Virtual sustain pedal functionality
 - **🎹 MIDI Support**: MIDI input/output for external controllers
-- **🎙️ Recording**: Basic recording and playback capabilities
-- **✨ Visual Feedback**: Enhanced visual indicators for active notes
-- **🎚️ Custom Key Ranges**: Configurable octave ranges and key layouts
+- **🎼 Guided practice**: Scale and song lessons with progress feedback
+- **🎙️ Audio export**: Render a performance to an audio file in addition to MIDI
 
 ### 🤝 Contributing
 - 📝 Open an issue or pull request on GitHub
@@ -88,7 +90,7 @@ Piano/
 - 📚 Maintain consistent code style and documentation
 
 ### 📄 License
-No license file is included yet. If you intend to use this project beyond personal use, please add a license.
+See [LICENSE](LICENSE).
 
 ### 🙏 Acknowledgements
 - 🛠️ Built with SwiftUI and AVFoundation
