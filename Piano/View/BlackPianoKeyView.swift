@@ -9,7 +9,7 @@ struct BlackPianoKeyView: View {
     @ScaledMetric(relativeTo: .caption2) private var labelSize: CGFloat = 10
 
     var body: some View {
-        GeometryReader { geometry in
+        GeometryReader { _ in
             RoundedRectangle(cornerRadius: 4)
                 .fill(
                     LinearGradient(
@@ -56,7 +56,6 @@ struct BlackPianoKeyView: View {
                     }
                 }
                 .shadow(color: .black.opacity(0.6), radius: isPressed ? 2 : 5, x: 1, y: isPressed ? 2 : 5)
-                .frame(height: geometry.size.height * 0.62)
                 .offset(y: isPressed ? 2 : 0)
         }
     }

@@ -4,12 +4,14 @@
 //
 import SwiftUI
 
+@MainActor
 struct SettingsView: View {
     @AppStorage("showKeyDisplayNames") private var showKeyDisplayNames = true
     @AppStorage("showFirstKeyNameForOctavesOnly") private var showFirstKeyNameForOctavesOnly = false
     @AppStorage("hapticsEnabled") private var hapticsEnabled = false
     @AppStorage("keyWidth") private var keyWidth = 50.0
     @AppStorage("masterVolume") private var masterVolume = 0.85
+    @ObservedObject private var privacy = AdPrivacyManager.shared
 
     @Environment(\.dismiss) private var dismiss
     @State private var showingResetConfirmation = false
@@ -52,6 +54,21 @@ struct SettingsView: View {
 
                         Divider().overlay(PianoTheme.divider)
                         SettingsPianoVolumeControl(volume: $masterVolume)
+                    }
+
+                    if privacy.privacyOptionsRequired {
+                        SettingsPanel(title: "Privacy", subtitle: "Manage your ad privacy choices", symbol: "hand.raised") {
+                            Button {
+                                privacy.presentPrivacyOptions()
+                            } label: {
+                                Label("Privacy choices", systemImage: "slider.horizontal.3")
+                                    .font(.body)
+                                    .foregroundStyle(PianoTheme.ivory)
+                                    .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityHint("Review and change your advertising privacy choices")
+                        }
                     }
 
                     Button("Restore default settings", systemImage: "arrow.counterclockwise") {

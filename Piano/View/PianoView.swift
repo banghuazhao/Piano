@@ -143,7 +143,7 @@ struct PianoView: View {
                                             onPress: { press(blackKey) },
                                             onRelease: { release(blackKey) }
                                         )
-                                        .frame(width: keyWidth * 0.62, height: height)
+                                        .frame(width: keyWidth * 0.62, height: height * 0.62)
                                         .offset(x: keyWidth * 0.31)
                                     }
                                 }
@@ -217,8 +217,10 @@ struct PianoView: View {
             studio.finishRecording()
         } else {
             stopPlayback()
-            studio.beginRecording()
-            studio.captureSustain(viewModel.sustainEnabled)
+            studio.beginRecording(
+                heldNotes: viewModel.pressedMIDINotes,
+                sustain: viewModel.sustainEnabled
+            )
         }
     }
 

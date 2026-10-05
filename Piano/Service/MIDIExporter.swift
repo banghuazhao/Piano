@@ -1,8 +1,13 @@
 import Foundation
 
 enum MIDIExporter {
+    enum ExportError: Error {
+        case invalidTake
+    }
+
     // Format 0, 480 ticks per quarter note, fixed 120 BPM.
-    static func data(for take: PerformanceTake) -> Data {
+    static func data(for take: PerformanceTake) throws -> Data {
+        guard take.isValid else { throw ExportError.invalidTake }
         var track = Data([0x00, 0xFF, 0x51, 0x03, 0x07, 0xA1, 0x20])
         var previousTick = 0
 

@@ -18,18 +18,29 @@ final class PerformanceStudio {
     @ObservationIgnored private var playbackNoteOff: ((UInt8) -> Void)?
     @ObservationIgnored private var playbackSustain: ((Bool) -> Void)?
     @ObservationIgnored private var playbackGeneration = UUID()
+    @ObservationIgnored private let libraryURL: URL
 
-    init() {
+    init(libraryURL: URL? = nil) {
+        self.libraryURL = libraryURL ?? FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        )[0]
+            .appendingPathComponent("PianoFlow", isDirectory: true)
+            .appendingPathComponent("performances.json")
         loadTakes()
     }
 
-    func beginRecording() {
+    func beginRecording(heldNotes: [UInt8] = [], sustain: Bool = false) {
         guard !isRecording else { return }
         isRecording = true
         capturedEvents = []
         heldRecordingNotes = []
         recordingSustain = false
         recordingStartedAt = ProcessInfo.processInfo.systemUptime
+        captureSustain(sustain)
+        for note in Set(heldNotes).sorted() {
+            capture(note: note, isNoteOn: true)
+        }
     }
 
     func capture(note: UInt8, isNoteOn: Bool) {
@@ -80,8 +91,13 @@ final class PerformanceStudio {
             duration: duration,
             events: capturedEvents
         )
-        takes.insert(take, at: 0)
-        persistTakes()
+        guard take.isValid else {
+            lastError = "This performance was too long to save."
+            return nil
+        }
+        let updatedTakes = [take] + takes
+        guard persistTakes(updatedTakes) else { return nil }
+        takes = updatedTakes
         return take
     }
 
@@ -92,6 +108,10 @@ final class PerformanceStudio {
         sustain: @escaping (Bool) -> Void
     ) {
         stopPlayback()
+        guard take.isValid else {
+            lastError = "This performance could not be played."
+            return
+        }
         let generation = UUID()
         playbackGeneration = generation
         playingTakeID = take.id
@@ -99,14 +119,10 @@ final class PerformanceStudio {
         playbackSustain = sustain
         playbackTask = Task { [weak self] in
             guard let self else { return }
-            var previousTime: TimeInterval = 0
+            let startedAt = ProcessInfo.processInfo.systemUptime
             for event in take.events {
-                let delay = max(0, event.time - previousTime)
-                previousTime = event.time
-                if delay > 0 {
-                    try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
-                }
-                guard !Task.isCancelled, self.playbackGeneration == generation else { break }
+                guard await self.waitUntil(event.time, startedAt: startedAt),
+                      self.playbackGeneration == generation else { break }
                 if let isSustained = event.sustain {
                     sustain(isSustained)
                     continue
@@ -119,7 +135,9 @@ final class PerformanceStudio {
                     noteOff(event.note)
                 }
             }
-            if self.playbackGeneration == generation {
+            if !Task.isCancelled, self.playbackGeneration == generation {
+                guard await self.waitUntil(take.duration, startedAt: startedAt),
+                      self.playbackGeneration == generation else { return }
                 self.releasePlaybackNotes()
                 sustain(false)
                 self.playbackSustain = nil
@@ -127,6 +145,19 @@ final class PerformanceStudio {
                 self.playbackTask = nil
             }
         }
+    }
+
+    private func waitUntil(_ time: TimeInterval, startedAt: TimeInterval) async -> Bool {
+        let elapsed = ProcessInfo.processInfo.systemUptime - startedAt
+        let remaining = max(0, time - elapsed)
+        if remaining > 0 {
+            do {
+                try await Task.sleep(nanoseconds: UInt64((remaining * 1_000_000_000).rounded()))
+            } catch {
+                return false
+            }
+        }
+        return !Task.isCancelled
     }
 
     func stopPlayback() {
@@ -140,9 +171,10 @@ final class PerformanceStudio {
     }
 
     func delete(_ take: PerformanceTake) {
+        let remainingTakes = takes.filter { $0.id != take.id }
+        guard persistTakes(remainingTakes) else { return }
         if playingTakeID == take.id { stopPlayback() }
-        takes.removeAll { $0.id == take.id }
-        persistTakes()
+        takes = remainingTakes
     }
 
     func midiFileURL(for take: PerformanceTake) -> URL? {
@@ -165,30 +197,31 @@ final class PerformanceStudio {
         playbackNoteOff = nil
     }
 
-    private var libraryURL: URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("PianoFlow", isDirectory: true)
-            .appendingPathComponent("performances.json")
-    }
-
     private func loadTakes() {
         guard FileManager.default.fileExists(atPath: libraryURL.path) else { return }
         do {
-            takes = try JSONDecoder().decode([PerformanceTake].self, from: Data(contentsOf: libraryURL))
+            let decoded = try JSONDecoder().decode([PerformanceTake].self, from: Data(contentsOf: libraryURL))
+            takes = decoded.filter(\.isValid)
+            if takes.count != decoded.count {
+                lastError = "Some saved performances could not be loaded."
+            }
         } catch {
             lastError = "Saved performances could not be loaded."
         }
     }
 
-    private func persistTakes() {
+    @discardableResult
+    private func persistTakes(_ updatedTakes: [PerformanceTake]) -> Bool {
         do {
             try FileManager.default.createDirectory(
                 at: libraryURL.deletingLastPathComponent(),
                 withIntermediateDirectories: true
             )
-            try JSONEncoder().encode(takes).write(to: libraryURL, options: .atomic)
+            try JSONEncoder().encode(updatedTakes).write(to: libraryURL, options: .atomic)
+            return true
         } catch {
-            lastError = "The performance could not be saved."
+            lastError = "The performance library could not be updated."
+            return false
         }
     }
 }

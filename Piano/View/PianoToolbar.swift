@@ -42,6 +42,43 @@ struct PianoToolbar: View {
                     .accessibilityLabel(chordName)
                 controls(compact: true)
             }
+            .fixedSize(horizontal: true, vertical: false)
+
+            HStack(spacing: 8) {
+                compactIdentity
+
+                Text(chordName == "READY TO PLAY" ? "LIVE" : chordName)
+                    .font(.system(.caption, design: .rounded, weight: .semibold))
+                    .foregroundStyle(PianoTheme.ivory)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityLabel(chordName)
+
+                control(
+                    title: isRecording ? "Stop recording" : "Record",
+                    caption: "REC",
+                    symbol: isRecording ? "stop.circle.fill" : "record.circle",
+                    isActive: isRecording,
+                    activeColor: PianoTheme.recording,
+                    compact: true,
+                    action: onRecord
+                )
+                .frame(width: 44)
+
+                control(
+                    title: isPlaying ? "Stop playback" : "Play latest recording",
+                    caption: "PLAY",
+                    symbol: isPlaying ? "stop.fill" : "play.fill",
+                    isActive: isPlaying,
+                    isEnabled: hasTake || isPlaying,
+                    compact: true,
+                    action: onPlay
+                )
+                .frame(width: 44)
+
+                moreControls
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -90,6 +127,42 @@ struct PianoToolbar: View {
             .frame(width: 44, height: 44)
             .background(PianoTheme.brass.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
             .accessibilityLabel("PianoFlow")
+    }
+
+    private var moreControls: some View {
+        Menu {
+            Button("Saved performances", systemImage: "square.stack", action: onLibrary)
+            Button(sustainEnabled ? "Turn sustain off" : "Turn sustain on", systemImage: "waveform.path", action: onSustain)
+            Button(metronomeRunning ? "Stop metronome" : "Start metronome", systemImage: "metronome", action: onMetronome)
+            Button("Tempo settings (\(bpm) BPM)", systemImage: "slider.horizontal.3", action: onTempo)
+            Divider()
+            Button("Settings", systemImage: "gearshape", action: onSettings)
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 19, weight: .semibold))
+                .foregroundStyle(PianoTheme.ivory)
+                .frame(width: 44, height: 44)
+                .background(controlBackground(isActive: sustainEnabled || metronomeRunning, activeColor: PianoTheme.brass))
+                .overlay(alignment: .topTrailing) {
+                    if sustainEnabled || metronomeRunning {
+                        Circle()
+                            .fill(PianoTheme.brass)
+                            .frame(width: 6, height: 6)
+                            .padding(6)
+                            .accessibilityHidden(true)
+                    }
+                }
+        }
+        .accessibilityLabel("More piano controls")
+        .accessibilityValue(activeControlSummary)
+    }
+
+    private var activeControlSummary: String {
+        let active = [
+            sustainEnabled ? "Sustain on" : nil,
+            metronomeRunning ? "Metronome running" : nil
+        ].compactMap { $0 }
+        return active.isEmpty ? "No active effects" : active.joined(separator: ", ")
     }
 
     private var chordDisplay: some View {

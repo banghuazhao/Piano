@@ -76,60 +76,21 @@ struct PerformanceTakeCard: View {
                 .frame(height: 1)
                 .accessibilityHidden(true)
 
-            HStack(spacing: 10) {
-                Button(isPlaying ? "Stop" : "Play", systemImage: isPlaying ? "stop.fill" : "play.fill") {
-                    if isPlaying {
-                        onStop()
-                    } else {
-                        onPlay(take)
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(PianoTheme.brass)
-                .foregroundStyle(PianoTheme.background)
-                .frame(minHeight: 44)
-                .accessibilityHint(isPlaying ? "Stops this performance" : "Plays this performance")
-
-                if let midiURL {
-                    ShareLink(item: midiURL) {
-                        Label("MIDI", systemImage: "square.and.arrow.up")
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(PianoTheme.ivory)
-                    .frame(minHeight: 44)
-                    .accessibilityLabel("Share MIDI for this performance")
-                    .accessibilityHint("Exports a Standard MIDI file")
-                } else if !didPrepareMIDI {
-                    ProgressView("Preparing MIDI")
-                        .font(.subheadline)
-                        .tint(PianoTheme.brass)
-                        .frame(minHeight: 44)
-                } else {
-                    Label("MIDI unavailable", systemImage: "square.and.arrow.up")
-                        .font(.subheadline)
-                        .foregroundStyle(PianoTheme.secondary)
-                        .accessibilityLabel("MIDI export unavailable")
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    playbackButton
+                        .fixedSize(horizontal: true, vertical: false)
+                    midiControl
+                        .fixedSize(horizontal: true, vertical: false)
+                    Spacer(minLength: 0)
+                    deleteButton
+                        .fixedSize(horizontal: true, vertical: false)
                 }
 
-                Spacer(minLength: 0)
-
-                Button("Delete", systemImage: "trash", role: .destructive) {
-                    showingDeleteConfirmation = true
-                }
-                .labelStyle(.iconOnly)
-                .frame(width: 44, height: 44)
-                .foregroundStyle(PianoTheme.secondary)
-                .accessibilityLabel("Delete performance from \(take.createdAt.formatted(date: .abbreviated, time: .shortened))")
-                .confirmationDialog(
-                    "Delete this performance?",
-                    isPresented: $showingDeleteConfirmation,
-                    titleVisibility: .visible
-                ) {
-                    Button("Delete Performance", role: .destructive) {
-                        studio.delete(take)
-                    }
-                } message: {
-                    Text("This take will be removed from your library.")
+                VStack(alignment: .leading, spacing: 10) {
+                    playbackButton
+                    midiControl
+                    deleteButton
                 }
             }
         }
@@ -145,6 +106,66 @@ struct PerformanceTakeCard: View {
         .task(id: take.id) {
             midiURL = studio.midiFileURL(for: take)
             didPrepareMIDI = true
+        }
+    }
+
+    private var playbackButton: some View {
+        Button(isPlaying ? "Stop" : "Play", systemImage: isPlaying ? "stop.fill" : "play.fill") {
+            if isPlaying {
+                onStop()
+            } else {
+                onPlay(take)
+            }
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(PianoTheme.brass)
+        .foregroundStyle(PianoTheme.background)
+        .frame(minHeight: 44)
+        .accessibilityHint(isPlaying ? "Stops this performance" : "Plays this performance")
+    }
+
+    @ViewBuilder
+    private var midiControl: some View {
+        if let midiURL {
+            ShareLink(item: midiURL) {
+                Label("MIDI", systemImage: "square.and.arrow.up")
+            }
+            .buttonStyle(.bordered)
+            .tint(PianoTheme.ivory)
+            .frame(minHeight: 44)
+            .accessibilityLabel("Share MIDI for this performance")
+            .accessibilityHint("Exports a Standard MIDI file")
+        } else if !didPrepareMIDI {
+            ProgressView("Preparing MIDI")
+                .font(.subheadline)
+                .tint(PianoTheme.brass)
+                .frame(minHeight: 44)
+        } else {
+            Label("MIDI unavailable", systemImage: "square.and.arrow.up")
+                .font(.subheadline)
+                .foregroundStyle(PianoTheme.secondary)
+                .accessibilityLabel("MIDI export unavailable")
+        }
+    }
+
+    private var deleteButton: some View {
+        Button("Delete", systemImage: "trash", role: .destructive) {
+            showingDeleteConfirmation = true
+        }
+        .labelStyle(.titleAndIcon)
+        .frame(minWidth: 44, minHeight: 44)
+        .foregroundStyle(PianoTheme.secondary)
+        .accessibilityLabel("Delete performance from \(take.createdAt.formatted(date: .abbreviated, time: .shortened))")
+        .confirmationDialog(
+            "Delete this performance?",
+            isPresented: $showingDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Performance", role: .destructive) {
+                studio.delete(take)
+            }
+        } message: {
+            Text("This take will be removed from your library.")
         }
     }
 }

@@ -1,167 +1,277 @@
 import GoogleMobileAds
 import SwiftUI
+import UserMessagingPlatform
 
-class AdManager {
-    struct GoogleAdsID {
+enum AdManager {
+    enum GoogleAdsID {
         static let bannerViewAdUnitID = Bundle.main.object(forInfoDictionaryKey: "bannerViewAdUnitID") as? String ?? ""
         static let appOpenAdID = Bundle.main.object(forInfoDictionaryKey: "appOpenAdID") as? String ?? ""
     }
 }
 
-final class OpenAd: NSObject, ObservableObject, FullScreenContentDelegate {
-    var appOpenAd: AppOpenAd?
-    var loadTime = Date()
-    var appHasEnterBackgroundBefore = false
-    var bypassAdThisTime = false
+@MainActor
+final class AdPrivacyManager: ObservableObject {
+    static let shared = AdPrivacyManager()
 
-    func requestAppOpenAd() {
-        print("[DEBUG] requestAppOpenAd called")
-        let request = Request()
-        request.scene = UIApplication.shared.connectedScenes.first as? UIWindowScene
-        AppOpenAd.load(
-            with: AdManager.GoogleAdsID.appOpenAdID,
-            request: request,
-            completionHandler: { appOpenAdIn, error in
-                if let error = error {
-                    print("[OPEN AD] Failed to load: \(error)")
-                } else {
-                    print("[OPEN AD] Ad is ready")
-                }
-                self.appOpenAd = appOpenAdIn
-                self.appOpenAd?.fullScreenContentDelegate = self
-                self.loadTime = Date()
-            }
-        )
-    }
+    @Published private(set) var privacyOptionsRequired = false
+    @Published private(set) var canRequestAds = false
 
-    func tryToPresentAd() {
-        print("[DEBUG] tryToPresentAd called")
-        if let gOpenAd = appOpenAd, wasLoadTimeLessThanNHoursAgo(thresholdN: 4) {
-            let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene
-            let window = windowScene?.windows.first
-            if bypassAdThisTime {
-                bypassAdThisTime = false
-                return
+    private var didRequestConsent = false
+    private var didStartMobileAds = false
+    private var isPresentingPrivacyOptions = false
+    private var adsReadyCallbacks: [() -> Void] = []
+
+    private init() {}
+
+    func prepareAds(onAdsReady: @escaping () -> Void) {
+        if didStartMobileAds {
+            onAdsReady()
+            return
+        }
+
+        adsReadyCallbacks.append(onAdsReady)
+        guard !didRequestConsent else { return }
+        didRequestConsent = true
+
+        Task {
+            do {
+                // UMP must update its status at least once in every app session.
+                try await ConsentInformation.shared.requestConsentInfoUpdate(with: RequestParameters())
+                updatePrivacyOptionsRequirement()
+                try await ConsentForm.loadAndPresentIfRequired(from: nil)
+            } catch {
+                // UMP may still permit requests using consent from a previous session.
+                print("[ADS] Consent update failed: \(error.localizedDescription)")
             }
-            if appHasEnterBackgroundBefore {
-                // A returning player should land back at the keys without an interruption.
-                guard !PianoSessionActivity.shouldDeferAppOpenAd else { return }
-                guard let rootViewController = window?.rootViewController else { return }
-                print("[DEBUG] Presenting App Open Ad")
-                gOpenAd.present(from: rootViewController)
-            } else {
-                print("[DEBUG] appHasEnterBackgroundBefore is false, not presenting ad")
-            }
-        } else {
-            print("[DEBUG] No ad loaded or ad expired, requesting new ad")
-            requestAppOpenAd()
+            updateConsentState()
         }
     }
 
-    func wasLoadTimeLessThanNHoursAgo(thresholdN: Int) -> Bool {
-        let now = Date()
-        let timeIntervalBetweenNowAndLoadTime = now.timeIntervalSince(loadTime)
-        let secondsPerHour = 3600.0
-        let intervalInHours = timeIntervalBetweenNowAndLoadTime / secondsPerHour
-        return intervalInHours < Double(thresholdN)
+    func presentPrivacyOptions() {
+        guard privacyOptionsRequired, !isPresentingPrivacyOptions else { return }
+        isPresentingPrivacyOptions = true
+        Task {
+            do {
+                try await ConsentForm.presentPrivacyOptionsForm(from: nil)
+            } catch {
+                print("[ADS] Privacy options could not be presented: \(error.localizedDescription)")
+            }
+            isPresentingPrivacyOptions = false
+            updateConsentState()
+        }
     }
 
-    func ad(_ ad: FullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: Error) {
-        print("[OPEN AD] Failed to present: \(error)")
+    private func updatePrivacyOptionsRequirement() {
+        privacyOptionsRequired = ConsentInformation.shared.privacyOptionsRequirementStatus == .required
+    }
+
+    private func updateConsentState() {
+        updatePrivacyOptionsRequirement()
+        let isAllowed = ConsentInformation.shared.canRequestAds
+        let shouldStartMobileAds = isAllowed && !didStartMobileAds
+        if shouldStartMobileAds {
+            didStartMobileAds = true
+            MobileAds.shared.start(completionHandler: nil)
+        }
+        canRequestAds = isAllowed
+        guard shouldStartMobileAds else { return }
+        let callbacks = adsReadyCallbacks
+        adsReadyCallbacks.removeAll()
+        callbacks.forEach { $0() }
+    }
+}
+
+@MainActor
+final class OpenAd: NSObject, ObservableObject, FullScreenContentDelegate {
+    private var appOpenAd: AppOpenAd?
+    private var loadTime: Date?
+    private var hasEnteredBackground = false
+    private var isLoading = false
+    private var isShowing = false
+
+    func sceneDidEnterBackground() {
+        hasEnteredBackground = true
+    }
+
+    func sceneDidBecomeActive() {
+        let isReturning = hasEnteredBackground
+        hasEnteredBackground = false
+        guard AdPrivacyManager.shared.canRequestAds else { return }
+
+        if isReturning && !PianoSessionActivity.shouldDeferAppOpenAd,
+           !isShowing,
+           let ad = availableAd(),
+           let rootViewController = foregroundRootViewController(),
+           rootViewController.presentedViewController == nil {
+            isShowing = true
+            ad.present(from: rootViewController)
+            return
+        }
+
         requestAppOpenAd()
     }
 
+    func requestAppOpenAd() {
+        guard AdPrivacyManager.shared.canRequestAds, !isLoading, !isShowing else { return }
+        guard availableAd() == nil else { return }
+        guard !AdManager.GoogleAdsID.appOpenAdID.isEmpty else { return }
+
+        isLoading = true
+        let request = Request()
+        request.scene = foregroundWindowScene()
+        AppOpenAd.load(with: AdManager.GoogleAdsID.appOpenAdID, request: request) { [weak self] ad, error in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.isLoading = false
+                guard let ad else {
+                    if let error {
+                        print("[ADS] App open ad failed to load: \(error.localizedDescription)")
+                    }
+                    return
+                }
+                self.appOpenAd = ad
+                self.loadTime = Date()
+                ad.fullScreenContentDelegate = self
+            }
+        }
+    }
+
+    private func availableAd() -> AppOpenAd? {
+        guard let appOpenAd, let loadTime,
+              Date().timeIntervalSince(loadTime) >= 0,
+              Date().timeIntervalSince(loadTime) < 4 * 60 * 60 else {
+            self.appOpenAd = nil
+            self.loadTime = nil
+            return nil
+        }
+        return appOpenAd
+    }
+
+    func ad(_ ad: FullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: Error) {
+        print("[ADS] App open ad failed to present: \(error.localizedDescription)")
+        finishPresentation()
+    }
+
     func adDidDismissFullScreenContent(_ ad: FullScreenPresentingAd) {
-        print("[OPEN AD] Ad dismissed")
+        finishPresentation()
+    }
+
+    private func finishPresentation() {
+        appOpenAd = nil
+        loadTime = nil
+        isShowing = false
         requestAppOpenAd()
     }
 }
 
+@MainActor
+private func foregroundWindowScene() -> UIWindowScene? {
+    UIApplication.shared.connectedScenes
+        .compactMap { $0 as? UIWindowScene }
+        .first { $0.activationState == .foregroundActive }
+}
+
+@MainActor
+private func foregroundRootViewController() -> UIViewController? {
+    guard let scene = foregroundWindowScene() else { return nil }
+    return scene.windows.first(where: \.isKeyWindow)?.rootViewController
+        ?? scene.windows.first?.rootViewController
+}
+
 struct BannerView: UIViewControllerRepresentable {
-    @State var viewWidth: CGFloat = .zero
-    private let bannerView = GoogleMobileAds.BannerView()
-    private let adUnitID = AdManager.GoogleAdsID.bannerViewAdUnitID
+    @ObservedObject private var privacy = AdPrivacyManager.shared
+    @State private var viewWidth: CGFloat = .zero
 
-    func makeUIViewController(context: Context) -> some UIViewController {
-        let bannerViewController = BannerViewController()
-        bannerView.adUnitID = adUnitID
-        bannerView.rootViewController = bannerViewController
-        bannerView.delegate = context.coordinator
-        bannerView.translatesAutoresizingMaskIntoConstraints = false
-        bannerViewController.view.addSubview(bannerView)
-        // Constrain GADBannerView to the bottom of the view.
+    func makeUIViewController(context: Context) -> BannerViewController {
+        let controller = BannerViewController()
+        let banner = controller.bannerView
+        banner.adUnitID = AdManager.GoogleAdsID.bannerViewAdUnitID
+        banner.rootViewController = controller
+        banner.delegate = context.coordinator
+        banner.translatesAutoresizingMaskIntoConstraints = false
+        banner.isHidden = true
+        controller.view.addSubview(banner)
         NSLayoutConstraint.activate([
-            bannerView.bottomAnchor.constraint(
-                equalTo: bannerViewController.view.safeAreaLayoutGuide.bottomAnchor),
-            bannerView.centerXAnchor.constraint(equalTo: bannerViewController.view.centerXAnchor),
+            banner.bottomAnchor.constraint(equalTo: controller.view.safeAreaLayoutGuide.bottomAnchor),
+            banner.centerXAnchor.constraint(equalTo: controller.view.centerXAnchor),
         ])
-        bannerViewController.delegate = context.coordinator
-
-        return bannerViewController
+        controller.delegate = context.coordinator
+        return controller
     }
 
-    func updateUIViewController(_ uiViewController: UIViewControllerType, context: Context) {
-        guard viewWidth != .zero else { return }
+    func updateUIViewController(_ controller: BannerViewController, context: Context) {
+        let banner = controller.bannerView
+        guard privacy.canRequestAds else {
+            banner.isHidden = true
+            controller.lastRequestedWidth = .zero
+            return
+        }
+        guard viewWidth > .zero, !AdManager.GoogleAdsID.bannerViewAdUnitID.isEmpty else { return }
+        guard abs(controller.lastRequestedWidth - viewWidth) > 1 else { return }
 
-        bannerView.adSize = currentOrientationAnchoredAdaptiveBanner(width: viewWidth)
+        controller.lastRequestedWidth = viewWidth
+        banner.isHidden = true
+        banner.adSize = currentOrientationAnchoredAdaptiveBanner(width: viewWidth)
         let request = Request()
-        request.scene = UIApplication.shared.connectedScenes.first as? UIWindowScene
-        bannerView.load(request)
+        request.scene = controller.view.window?.windowScene
+        banner.load(request)
     }
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
 
-    class Coordinator: NSObject, BannerViewControllerWidthDelegate, BannerViewDelegate {
+    final class Coordinator: NSObject, BannerViewControllerWidthDelegate, BannerViewDelegate {
         let parent: BannerView
 
         init(_ parent: BannerView) {
             self.parent = parent
         }
 
-        // MARK: - BannerViewControllerWidthDelegate methods
-
-        func bannerViewController(
-            _ bannerViewController: BannerViewController, didUpdate width: CGFloat
-        ) {
+        func bannerViewController(_ controller: BannerViewController, didUpdate width: CGFloat) {
             parent.viewWidth = width
         }
 
-        // MARK: - BannerViewDelegate methods
-
-        private func bannerViewDidReceiveAd(_ bannerView: BannerView) {
-            print("DID RECEIVE Banner AD")
+        func bannerViewDidReceiveAd(_ bannerView: GoogleMobileAds.BannerView) {
+            bannerView.isHidden = !AdPrivacyManager.shared.canRequestAds
         }
 
-        private func bannerView(_ bannerView: BannerView, didFailToReceiveAdWithError error: Error) {
-            print("DID NOT RECEIVE Banner AD: \(error.localizedDescription)")
+        func bannerView(
+            _ bannerView: GoogleMobileAds.BannerView,
+            didFailToReceiveAdWithError error: Error
+        ) {
+            bannerView.isHidden = true
+            print("[ADS] Banner failed to load: \(error.localizedDescription)")
         }
     }
 }
 
-protocol BannerViewControllerWidthDelegate: AnyObject {
-    func bannerViewController(_ bannerViewController: BannerViewController, didUpdate width: CGFloat)
+fileprivate protocol BannerViewControllerWidthDelegate: AnyObject {
+    func bannerViewController(_ controller: BannerViewController, didUpdate width: CGFloat)
 }
 
-class BannerViewController: UIViewController {
-    weak var delegate: BannerViewControllerWidthDelegate?
+final class BannerViewController: UIViewController {
+    let bannerView = GoogleMobileAds.BannerView()
+    fileprivate var lastRequestedWidth: CGFloat = .zero
+    fileprivate weak var delegate: BannerViewControllerWidthDelegate?
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-
-        delegate?.bannerViewController(
-            self, didUpdate: view.frame.inset(by: view.safeAreaInsets).size.width)
+        notifyWidth()
     }
 
     override func viewWillTransition(
-        to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator
+        to size: CGSize,
+        with coordinator: UIViewControllerTransitionCoordinator
     ) {
-        coordinator.animate { _ in
-            // do nothing
-        } completion: { _ in
-            self.delegate?.bannerViewController(
-                self, didUpdate: self.view.frame.inset(by: self.view.safeAreaInsets).size.width)
-        }
+        super.viewWillTransition(to: size, with: coordinator)
+        coordinator.animate(alongsideTransition: nil) { _ in self.notifyWidth() }
     }
-} 
+
+    private func notifyWidth() {
+        delegate?.bannerViewController(
+            self,
+            didUpdate: view.bounds.inset(by: view.safeAreaInsets).width
+        )
+    }
+}

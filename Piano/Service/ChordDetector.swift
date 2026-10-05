@@ -23,11 +23,13 @@ enum ChordDetector {
             return "\(names[Int(bass) % 12])\(octave)"
         }
 
+        let bassPitchClass = Int(bass) % 12
+        let candidateRoots = [bassPitchClass] + (0..<12).filter { $0 != bassPitchClass }
         for (intervals, suffix) in patterns where intervals.count == pitchClasses.count {
-            for root in 0..<12 {
+            for root in candidateRoots {
                 let shifted = Set(intervals.map { ($0 + root) % 12 })
                 if shifted == pitchClasses {
-                    let slash = Int(bass) % 12 == root ? "" : "/\(names[Int(bass) % 12])"
+                    let slash = bassPitchClass == root ? "" : "/\(names[bassPitchClass])"
                     return "\(names[root])\(suffix)\(slash)"
                 }
             }

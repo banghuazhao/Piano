@@ -41,6 +41,7 @@ struct PortraitPracticeStand: View {
                     .font(.subheadline)
                     .foregroundStyle(PianoTheme.secondary)
                     .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: 650)
 

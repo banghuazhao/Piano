@@ -31,6 +31,7 @@ final class MetronomeService {
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self, self.isRunning else { return }
+                self.connectedSampleRate = nil
                 self.start(bpm: self.bpm)
             }
         }
@@ -66,10 +67,14 @@ final class MetronomeService {
             let session = AVAudioSession.sharedInstance()
             try session.setActive(true)
             let sampleRate = session.sampleRate > 0 ? session.sampleRate : 44_100
-            guard let buffer = makeBarBuffer(sampleRate: sampleRate) else { return }
+            guard let buffer = makeBarBuffer(sampleRate: sampleRate) else {
+                stop()
+                return
+            }
 
             player.stop()
             if connectedSampleRate != sampleRate {
+                audioEngine.stop()
                 audioEngine.connect(player, to: audioEngine.mainMixerNode, format: buffer.format)
                 connectedSampleRate = sampleRate
             }
@@ -83,7 +88,8 @@ final class MetronomeService {
             player.play()
             isRunning = true
         } catch {
-            isRunning = false
+            stop()
+            connectedSampleRate = nil
             print("Failed to start metronome: \(error)")
         }
     }

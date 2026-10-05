@@ -8,8 +8,27 @@ import SwiftUI
 @MainActor
 struct TempoPopoverView: View {
     let metronome: MetronomeService
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     var body: some View {
+        ScrollView {
+            content
+        }
+        .frame(width: 300)
+        .frame(maxHeight: verticalSizeClass == .compact ? 260 : 420)
+        .background {
+            RoundedRectangle(cornerRadius: 18)
+                .fill(PianoTheme.panel)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 18)
+                        .strokeBorder(PianoTheme.brass.opacity(0.25), lineWidth: 1)
+                }
+        }
+        .environment(\.colorScheme, .dark)
+        .presentationCompactAdaptation(.sheet)
+    }
+
+    private var content: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 10) {
                 Image(systemName: "metronome")
@@ -107,17 +126,6 @@ struct TempoPopoverView: View {
             }
         }
         .padding(18)
-        .frame(width: 300)
-        .background {
-            RoundedRectangle(cornerRadius: 18)
-                .fill(PianoTheme.panel)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 18)
-                        .strokeBorder(PianoTheme.brass.opacity(0.25), lineWidth: 1)
-                }
-        }
-        .environment(\.colorScheme, .dark)
-        .presentationCompactAdaptation(.popover)
     }
 
     private var tempoBinding: Binding<Double> {
