@@ -1,9 +1,16 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 @MainActor
 struct PracticeLibraryView: View {
     let session: PracticeSession
+    let library: ImportedSongLibrary
     @Environment(\.dismiss) private var dismiss
+    @State private var showImporter = false
+    @State private var isImporting = false
+    @State private var importError: String?
+    @State private var importedSong: ImportedPracticeSong?
+    @State private var showImportedSong = false
 
     var body: some View {
         NavigationStack {
@@ -11,6 +18,7 @@ struct PracticeLibraryView: View {
                 VStack(alignment: .leading, spacing: 26) {
                     header
                     dailyProgressCard
+                    importedSongs
 
                     ForEach(PracticeCategory.allCases) { category in
                         VStack(alignment: .leading, spacing: 12) {
@@ -59,6 +67,33 @@ struct PracticeLibraryView: View {
                         .bold()
                 }
             }
+            .navigationDestination(isPresented: $showImportedSong) {
+                if let song = importedSong {
+                    ImportedSongDetailView(library: library, songID: song.id, onStart: start)
+                }
+            }
+            .fileImporter(isPresented: $showImporter,
+                          allowedContentTypes: [UTType(filenameExtension: "mid") ?? .audio,
+                                                UTType(filenameExtension: "midi") ?? .audio]) { result in
+                switch result {
+                case .success(let url):
+                    isImporting = true
+                    Task { @MainActor in
+                        defer { isImporting = false }
+                        do {
+                            importedSong = try await library.importFile(url: url)
+                            showImportedSong = true
+                        }
+                        catch { importError = error.localizedDescription }
+                    }
+                case .failure(let error): importError = error.localizedDescription
+                }
+            }
+            .alert("Couldn’t import MIDI", isPresented: Binding(
+                get: { importError != nil }, set: { if !$0 { importError = nil } }
+            )) {
+                Button("OK") { importError = nil }
+            } message: { Text(importError ?? "") }
         }
         .tint(PianoTheme.brass)
         .preferredColorScheme(.dark)
@@ -78,7 +113,7 @@ struct PracticeLibraryView: View {
                 Text("A little practice, every day")
                     .font(.title2.bold())
                     .foregroundStyle(PianoTheme.ivory)
-                Text("Follow the highlighted keys. Play at your own pace and hear your progress.")
+                Text("Read the music, follow the keys, and build your rhythm. Start with an exercise or bring your own MIDI song.")
                     .font(.subheadline)
                     .foregroundStyle(PianoTheme.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -89,6 +124,12 @@ struct PracticeLibraryView: View {
 
     private var dailyProgressCard: some View {
         VStack(alignment: .leading, spacing: 12) {
+            if let warning = library.loadWarning {
+                Label(warning, systemImage: "exclamationmark.circle")
+                    .font(.subheadline)
+                    .foregroundStyle(PianoTheme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             HStack {
                 Label("TODAY'S PRACTICE", systemImage: "sparkles")
                     .font(.caption.bold())
@@ -124,9 +165,8 @@ struct PracticeLibraryView: View {
     }
 
     private func exerciseCard(_ exercise: PracticeExercise) -> some View {
-        Button {
-            session.start(exercise)
-            dismiss()
+        NavigationLink {
+            PracticeSetupView(exercise: exercise, onStart: start)
         } label: {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .top, spacing: 10) {
@@ -164,12 +204,68 @@ struct PracticeLibraryView: View {
             .contentShape(RoundedRectangle(cornerRadius: 16))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Start \(exercise.title)")
+        .accessibilityLabel("Practice \(exercise.title)")
         .accessibilityValue("\(exercise.difficulty.rawValue), \(exercise.steps.count) steps")
-        .accessibilityHint("Starts this exercise from the beginning")
+        .accessibilityHint("Choose hands, tempo, and practice mode")
+    }
+
+    private var importedSongs: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Your MIDI songs")
+                    .font(.title3.bold())
+                    .foregroundStyle(PianoTheme.ivory)
+                    .accessibilityAddTraits(.isHeader)
+                Spacer()
+                Button {
+                    showImporter = true
+                } label: {
+                    if isImporting { ProgressView().tint(PianoTheme.brass) }
+                    else { Label("Import", systemImage: "square.and.arrow.down") }
+                }
+                .disabled(isImporting)
+                .frame(minHeight: 44)
+                .accessibilityLabel(isImporting ? "Importing MIDI" : "Import MIDI song")
+            }
+            if library.songs.isEmpty {
+                Text("Import a .mid or .midi file from Files. Assign its parts to each hand and turn it into guided practice.")
+                    .font(.subheadline)
+                    .foregroundStyle(PianoTheme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(PianoTheme.panel, in: RoundedRectangle(cornerRadius: 16))
+            }
+            ForEach(library.songs) { song in
+                NavigationLink {
+                    ImportedSongDetailView(library: library, songID: song.id, onStart: start)
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "doc.richtext")
+                            .foregroundStyle(PianoTheme.brass)
+                            .accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(song.title).font(.headline).foregroundStyle(PianoTheme.ivory)
+                            Text(song.summary).font(.caption).foregroundStyle(PianoTheme.secondary)
+                        }
+                        Spacer(minLength: 8)
+                        Image(systemName: "chevron.right").foregroundStyle(PianoTheme.brass)
+                    }
+                    .padding(16)
+                    .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+                    .background(PianoTheme.panel, in: RoundedRectangle(cornerRadius: 16))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func start(_ exercise: PracticeExercise, options: PracticeOptions) {
+        session.start(exercise, options: options)
+        dismiss()
     }
 }
 
 #Preview {
-    PracticeLibraryView(session: PracticeSession())
+    PracticeLibraryView(session: PracticeSession(), library: .shared)
 }

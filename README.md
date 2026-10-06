@@ -13,7 +13,10 @@ A tactile iOS piano keyboard built with SwiftUI and AVAudioEngine. Play the full
 - **🧭 Range navigation**: Octave shortcuts and a range slider keep navigation separate from the playing surface
 - **⚙️ Customizable Settings**: Adjustable key width, key labels, piano volume, and haptic feedback
 - **🎵 Expressive playing**: SoundFont-backed piano audio, balanced note release, sustain, and a live chord readout
-- **⏱️ Guided practice**: Scales, arpeggios, chords, and familiar melodies with highlighted keys, accuracy feedback, a daily goal, and local progress
+- **⏱️ Guided practice**: Scales, arpeggios, chords, melodies, and a two-hand arrangement with highlighted keys, a daily goal, and local progress
+- **🥁 Rhythm coach**: A synchronized count-in and click, note onset feedback, missed-note scoring, and optional gradual tempo increases after a successful pass
+- **🎼 Sheet music & hands**: Following treble/bass staves with rests, accidentals, and ties; practice left, right, or both hands
+- **📂 MIDI song import**: Import Standard MIDI files from Files, choose which tracks to include, assign hands, and save songs for guided practice
 - **🎛️ MIDI input**: USB and Bluetooth MIDI keyboards with velocity and sustain pedal support
 - **⏺️ Performance library**: Record notes, velocity, and sustain; rename, trim copies, loop a section, adjust playback speed, and share MIDI, WAV, or M4A files
 - **🔊 PianoFlow Premium**: A one-time purchase removes ads and adds Warm Studio and Bright Hall sound profiles
@@ -32,6 +35,8 @@ A tactile iOS piano keyboard built with SwiftUI and AVAudioEngine. Play the full
 - 🔊 `AudioEngine` handles the audio session, SoundFont, EQ, and reverb, while `MetronomeService` produces the click track
 - 💾 `PerformanceStudio` saves note events locally; `RecordingEditor`, `MIDIExporter`, and `AudioExporter` provide editing and sharing
 - 🎼 `PracticeSession` tracks physical note events and daily progress; recorded playback does not count toward practice
+- 📂 `MIDIFileImporter` validates Standard MIDI files; `ImportedSongLibrary` saves editable track assignments locally
+- 🎼 `ScoreNotation` indexes and spells the visible score window; `PracticeScoreView` draws the music with native vector graphics
 - 🎛️ `MIDIInputService` copies CoreMIDI callback data before returning and combines held keys from multiple devices
 - 🛍️ `PremiumStore` grants access only from verified StoreKit transactions
 - ⚙️ `SettingsView` provides customization options with persistent storage
@@ -74,7 +79,10 @@ Piano/
   - Use octave buttons (C1–C7) to jump across the full A0–C8 range
   - Drag the range slider for fine control
 - **⏺️ Record and replay**: Tap Record, play, then tap Stop. Play replays the latest take; Takes opens saved performances. Tools offers naming, speed, loops, trimmed copies, and WAV/M4A export.
-- **🎼 Guided practice**: Open Practice (or More → Guided practice on compact screens), choose an exercise, and follow the brass outlines. Release repeated notes before playing them again. Accuracy measures note choices rather than rhythm.
+- **🎼 Guided practice**: Open Practice (or More → Guided practice on compact screens), choose an exercise, then select hands and a mode. At your pace waits for correct notes; Rhythm coach adds a count-in and grades note onset timing. Release repeated notes before replaying them. Note lengths are displayed but are not graded.
+- **🥁 Tempo progression**: Choose a start tempo, goal tempo, and optional +5/+10 BPM increment. A pass with at least 80% pitch and timing accuracy offers the next tempo. Tap it to begin a fresh pass. Pause/resume uses a fresh count-in; audio interruptions also pause practice.
+- **📂 Your MIDI songs**: Choose Import in Practice and select a `.mid` or `.midi` file. Include the parts you want, and assign each to Left, Right, or Split at C4. Assignments, renamed titles, and songs persist on this device. Deleting a song leaves the original MIDI file intact.
+- **🎼 Sheet music**: The score follows the current notes. Practice options can hide the score to reveal the keyboard range navigator. Imported rhythms are simplified to sixteenth-note spelling for display; rhythm grading uses the original MIDI onset times. MIDI does not encode an engraved score, so enharmonic spelling and dense arrangements may be simplified.
 - **🎛️ MIDI keyboard**: Enable keyboard input in Settings. Plug in a USB MIDI keyboard, or choose Connect Bluetooth MIDI to use Apple's native pairing browser.
 - **🎛️ Sustain and metronome**: Toggle them on the control panel. Tap the BPM display to adjust tempo, beats per bar, and click volume.
 - **⚙️ Settings**: Tap the gear icon to access:
@@ -88,7 +96,9 @@ Piano/
 
 ### Verification and Premium setup
 
-Run `bash Scripts/check-features.sh` to check practice progress, MIDI input state, recording boundaries, playback, and file export models. Build the `Piano` scheme for normal development. Use its local StoreKit configuration to test Premium; see [Premium setup](Docs/PremiumSetup.md) for product configuration and purchase testing.
+Run `bash Scripts/check-features.sh` to check rhythm scoring, practice progress, MIDI input and file import, score notation, recording boundaries, playback, and file export models. Build the `Piano` scheme for normal development. Use its local StoreKit configuration to test Premium; see [Premium setup](Docs/PremiumSetup.md) for product configuration and purchase testing.
+
+MIDI import supports Standard MIDI format 0 and 1 with PPQN timing. Percussion and notes outside A0–C8 are skipped and reported. Format 2 and SMPTE timing receive a clear unsupported-file error. Practice uses one selected tempo and meter; files with tempo or meter changes disclose that simplification. The importer limits file size, note count, song duration, and library storage to keep malformed or unusually large files from overwhelming the instrument.
 
 Warm Studio and Bright Hall apply EQ and reverb to the bundled piano samples. WAV/M4A export renders one selected pass at the chosen speed and preserves the sound profile; a playback loop does not create an endless export.
 

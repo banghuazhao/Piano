@@ -13,6 +13,8 @@ struct PianoToolbar: View {
     let sustainEnabled: Bool
     let metronomeRunning: Bool
     let bpm: Int
+    var rhythmPracticeActive = false
+    var practicePaused = false
     let onRecord: () -> Void
     let onPlay: () -> Void
     let onLibrary: () -> Void
@@ -135,7 +137,7 @@ struct PianoToolbar: View {
             Button("Guided practice", systemImage: "graduationcap", action: onPractice)
             Button("Saved performances", systemImage: "square.stack", action: onLibrary)
             Button(sustainEnabled ? "Turn sustain off" : "Turn sustain on", systemImage: "waveform.path", action: onSustain)
-            Button(metronomeRunning ? "Stop metronome" : "Start metronome", systemImage: "metronome", action: onMetronome)
+            Button(metronomeActionTitle, systemImage: "metronome", action: onMetronome)
             Button("Tempo settings (\(bpm) BPM)", systemImage: "slider.horizontal.3", action: onTempo)
             Divider()
             Button("Settings", systemImage: "gearshape", action: onSettings)
@@ -240,7 +242,7 @@ struct PianoToolbar: View {
                 action: onSustain
             )
             control(
-                title: metronomeRunning ? "Stop metronome" : "Start metronome",
+                title: metronomeActionTitle,
                 caption: "CLICK",
                 symbol: "metronome",
                 isActive: metronomeRunning,
@@ -257,6 +259,12 @@ struct PianoToolbar: View {
             )
         }
         .frame(maxWidth: compact ? .infinity : nil)
+    }
+
+    private var metronomeActionTitle: String {
+        rhythmPracticeActive
+            ? (practicePaused ? "Resume rhythm practice" : "Pause rhythm practice")
+            : (metronomeRunning ? "Stop metronome" : "Start metronome")
     }
 
     private func control(

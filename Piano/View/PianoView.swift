@@ -6,6 +6,7 @@ struct PianoView: View {
     @State private var studio = PerformanceStudio()
     @State private var metronome = MetronomeService()
     @State private var practice = PracticeSession()
+    @State private var songs = ImportedSongLibrary.shared
     @State private var midi = MIDIInputService()
     @State private var premium = PremiumStore.shared
     @State private var scrollAction: ((AnyHashable, UnitPoint?) -> Void)?
@@ -21,6 +22,7 @@ struct PianoView: View {
     @AppStorage("showFirstKeyNameForOctavesOnly") private var octaveNamesOnly = false
     @AppStorage("masterVolume") private var masterVolume = 0.85
     @AppStorage("soundProfile") private var soundProfileRaw = PianoSoundProfile.concert.rawValue
+    @AppStorage("practiceShowScore") private var showPracticeScore = true
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -34,14 +36,19 @@ struct PianoView: View {
                     sustainEnabled: viewModel.sustainEnabled,
                     metronomeRunning: metronome.isRunning,
                     bpm: metronome.bpm,
+                    rhythmPracticeActive: practice.isActive && practice.options.mode == .rhythm,
+                    practicePaused: practice.isPaused,
                     onRecord: toggleRecording,
                     onPlay: togglePlayback,
                     onLibrary: { showLibrary = true },
                     onPractice: { showPractice = true },
                     onSustain: toggleSustain,
                     onMetronome: toggleMetronome,
-                    onTempo: { showTempo = true },
-                    onSettings: { viewModel.showSettings = true }
+                    onTempo: {
+                        if practice.options.mode == .rhythm { practice.pause() }
+                        showTempo = true
+                    },
+                    onSettings: { practice.pause(); viewModel.showSettings = true }
                 )
 
                 if practice.exercise != nil {
@@ -51,12 +58,14 @@ struct PianoView: View {
                         .padding(.bottom, 4)
                 }
 
-                KeyboardNavigator(
+                if practice.exercise == nil || !showPracticeScore {
+                    KeyboardNavigator(
                     position: $navigatorPosition,
                     octaves: viewModel.octaves,
                     currentOctave: viewModel.currentOctave,
                     onOctave: jumpToOctave
-                )
+                    )
+                }
 
                 Rectangle()
                     .fill(
@@ -76,12 +85,19 @@ struct PianoView: View {
                 GeometryReader { keyArea in
                     let showsMusicStand = keyArea.size.height > 700
                         && keyArea.size.height > keyArea.size.width
-                    let keyboardHeight = showsMusicStand
+                    let hasScore = practice.exercise != nil && showPracticeScore
+                    let scoreHeight = showsMusicStand
+                        ? keyArea.size.height - min(500, keyArea.size.height * 0.52)
+                        : min(practice.options.hand == .both ? 148 : 104, keyArea.size.height * 0.48)
+                    let keyboardHeight = hasScore ? max(1, keyArea.size.height - scoreHeight) : showsMusicStand && practice.exercise == nil
                         ? min(500, keyArea.size.height * 0.52)
                         : keyArea.size.height
 
                     VStack(spacing: 0) {
-                        if showsMusicStand {
+                        if hasScore {
+                            PracticeScoreFollower(session: practice, isCompact: !showsMusicStand)
+                                .frame(height: scoreHeight)
+                        } else if showsMusicStand && practice.exercise == nil {
                             PortraitPracticeStand(
                                 chordName: ChordDetector.name(for: viewModel.pressedMIDINotes),
                                 takeCount: studio.takes.count,
@@ -112,10 +128,14 @@ struct PianoView: View {
             PerformanceLibraryView(studio: studio, onPlay: playTake, onStop: stopPlayback)
         }
         .sheet(isPresented: $showPractice) {
-            PracticeLibraryView(session: practice)
+            PracticeLibraryView(session: practice, library: songs)
         }
         .popover(isPresented: $showTempo) {
-            TempoPopoverView(metronome: metronome)
+            if practice.exercise != nil, practice.options.mode == .rhythm {
+                PracticeTempoView(session: practice)
+            } else {
+                TempoPopoverView(metronome: metronome)
+            }
         }
         .onChange(of: navigatorPosition) { _, position in
             viewModel.scrollPosition = position
@@ -125,6 +145,7 @@ struct PianoView: View {
             viewModel.setMasterVolume(masterVolume)
             applySoundProfile()
             configureMIDI()
+            configurePractice()
         }
         .onChange(of: masterVolume) { _, volume in
             viewModel.setMasterVolume(volume)
@@ -144,7 +165,10 @@ struct PianoView: View {
             }
         }
         .onChange(of: practice.targetNotes) { _, _ in revealPracticeNotes() }
+        .onChange(of: practice.currentStepIndex) { _, _ in revealPracticeNotes() }
         .onChange(of: practice.exercise?.id) { _, _ in revealPracticeNotes(force: true) }
+        .onChange(of: showPractice) { _, shown in if shown { practice.pause() } }
+        .onChange(of: showLibrary) { _, shown in if shown { practice.pause() } }
         .onChange(of: keyboardViewportWidth) { _, _ in revealPracticeNotes() }
     }
 
@@ -222,20 +246,31 @@ struct PianoView: View {
         return CGFloat(count) * playingKeyWidth + CGFloat(max(0, count - 1))
     }
 
-    /// Temporarily fit chord targets while keeping the user's preferred key width.
+    /// Fit the measure, including sustained bass notes, so each new melody note
+    /// does not resize the keyboard underneath a held finger.
     private var playingKeyWidth: CGFloat {
-        guard practice.targetNotes.count > 1, keyboardViewportWidth > 0,
+        guard practiceDisplayNotes.count > 1, keyboardViewportWidth > 0,
               let range = practiceKeyRange else { return keyWidth }
         let keysToFit = CGFloat(range.upperBound - range.lowerBound + 4)
         return max(30, min(keyWidth, keyboardViewportWidth / keysToFit - 1))
     }
 
     private var practiceKeyRange: ClosedRange<Int>? {
-        let indices = practice.targetNotes.compactMap { note in
+        let indices = practiceDisplayNotes.compactMap { note in
             viewModel.whiteKeys.lastIndex(where: { $0.midiNote <= note })
         }
         guard let first = indices.min(), let last = indices.max() else { return nil }
         return first...last
+    }
+
+    private var practiceDisplayNotes: Set<UInt8> {
+        guard let exercise = practice.exercise, !exercise.steps.isEmpty else { return [] }
+        let index = min(practice.currentStepIndex, exercise.steps.count - 1)
+        let barLength = Double(exercise.beatsPerBar) * 4 / Double(exercise.beatUnit)
+        let start = floor(exercise.steps[index].beat / barLength) * barLength
+        return Set(exercise.score.filter {
+            $0.startBeat < start + barLength && $0.startBeat + $0.durationBeats > start
+        }.map(\.pitch))
     }
 
     @discardableResult
@@ -323,6 +358,10 @@ struct PianoView: View {
 
     private func toggleMetronome() {
         PianoSessionActivity.markPlayed()
+        if practice.isActive, practice.options.mode == .rhythm {
+            if practice.isPaused { practice.resume() } else { practice.pause() }
+            return
+        }
         if metronome.isRunning {
             metronome.stop()
         } else {
@@ -336,6 +375,7 @@ struct PianoView: View {
         }
         if studio.isRecording { studio.finishRecording() }
         stopPlayback()
+        practice.pause()
         metronome.stop()
         viewModel.stopAllNotes()
         for note: UInt8 in 21...108 { practice.noteOff(note) }
@@ -376,11 +416,20 @@ struct PianoView: View {
             midi?.resetHeldNotes()
             if studio?.isRecording == true { studio?.finishRecording() }
             studio?.stopPlayback()
+            practice?.pause()
             metronome?.stop()
             for note: UInt8 in 21...108 { practice?.noteOff(note) }
         }
         midi.setActive(scenePhase == .active)
         midi.start()
+    }
+
+    private func configurePractice() {
+        practice.onRhythmStart = { [weak metronome] bpm, numerator, denominator in
+            metronome?.startForPractice(bpm: bpm, beatsPerBar: numerator, beatUnit: denominator)
+        }
+        practice.onRhythmStop = { [weak metronome] in metronome?.stop() }
+        metronome.onTimingReset = { [weak practice] in practice?.pause() }
     }
 
     private static func handleMIDI(
@@ -408,6 +457,7 @@ struct PianoView: View {
         case .allSoundOff:
             if studio.isRecording { studio.finishRecording() }
             studio.stopPlayback()
+            practice.pause()
             viewModel.stopAllNotes()
             for note: UInt8 in 21...108 { practice.noteOff(note) }
         }

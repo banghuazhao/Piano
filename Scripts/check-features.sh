@@ -12,6 +12,15 @@ xcrun swiftc Piano/Model/PracticeExercise.swift Piano/Service/PracticeSession.sw
   Tests/PracticeChecks.swift -o "$checks_dir/practice"
 "$checks_dir/practice"
 
+xcrun swiftc Piano/Model/PracticeExercise.swift Piano/Model/ImportedPracticeSong.swift \
+  Piano/Service/MIDIFileImporter.swift Piano/Service/ImportedSongLibrary.swift \
+  Tests/MIDIImportChecks.swift -o "$checks_dir/import"
+"$checks_dir/import"
+
+xcrun swiftc Piano/Model/PracticeExercise.swift Piano/Model/ScoreNotation.swift \
+  Tests/ScoreNotationChecks.swift -o "$checks_dir/score"
+"$checks_dir/score"
+
 xcrun swiftc Piano/Model/PerformanceTake.swift Piano/Model/PianoSoundProfile.swift \
   Piano/Service/RecordingEditor.swift Piano/Service/MIDIExporter.swift \
   Piano/Service/AudioExporter.swift Piano/Service/PremiumStore.swift \

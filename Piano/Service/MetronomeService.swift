@@ -3,6 +3,7 @@
 //
 
 import AVFoundation
+import Darwin
 import Observation
 
 /// A looped PCM bar keeps beats sample-accurate without a UI timer.
@@ -12,7 +13,9 @@ final class MetronomeService {
     private(set) var isRunning = false
     private(set) var bpm = 96
     private(set) var beatsPerBar = 4
+    private(set) var beatUnit = 4
     private(set) var volume = 0.7
+    @ObservationIgnored var onTimingReset: (() -> Void)?
 
     @ObservationIgnored private let audioEngine = AVAudioEngine()
     @ObservationIgnored private let player = AVAudioPlayerNode()
@@ -32,7 +35,8 @@ final class MetronomeService {
             Task { @MainActor [weak self] in
                 guard let self, self.isRunning else { return }
                 self.connectedSampleRate = nil
-                self.start(bpm: self.bpm)
+                self.onTimingReset?()
+                if self.isRunning { self.start(bpm: self.bpm) }
             }
         }
         interruptionObserver = NotificationCenter.default.addObserver(
@@ -46,6 +50,7 @@ final class MetronomeService {
                       AVAudioSession.InterruptionType(rawValue: rawType) == .began else {
                     return
                 }
+                self?.onTimingReset?()
                 self?.stop()
             }
         }
@@ -61,7 +66,19 @@ final class MetronomeService {
     }
 
     func start(bpm requestedBPM: Int) {
+        _ = startAligned(bpm: requestedBPM, numerator: beatsPerBar, denominator: 4, scheduled: false)
+    }
+
+    /// Audio and scoring share the scheduled first click, including the count-in.
+    func startForPractice(bpm: Int, beatsPerBar: Int, beatUnit: Int) -> TimeInterval? {
+        startAligned(bpm: bpm, numerator: beatsPerBar, denominator: beatUnit, scheduled: true)
+    }
+
+    private func startAligned(bpm requestedBPM: Int, numerator: Int,
+                              denominator: Int, scheduled: Bool) -> TimeInterval? {
         bpm = min(max(requestedBPM, 40), 240)
+        beatsPerBar = min(max(numerator, 1), 16)
+        beatUnit = [1, 2, 4, 8, 16, 32].contains(denominator) ? denominator : 4
 
         do {
             let session = AVAudioSession.sharedInstance()
@@ -69,7 +86,7 @@ final class MetronomeService {
             let sampleRate = session.sampleRate > 0 ? session.sampleRate : 44_100
             guard let buffer = makeBarBuffer(sampleRate: sampleRate) else {
                 stop()
-                return
+                return nil
             }
 
             player.stop()
@@ -85,12 +102,21 @@ final class MetronomeService {
 
             loopBuffer = buffer
             player.scheduleBuffer(buffer, at: nil, options: .loops)
-            player.play()
+            let leadTime = scheduled ? 0.12 : 0
+            let epoch = ProcessInfo.processInfo.systemUptime + leadTime
+            if scheduled {
+                let hostTime = mach_absolute_time() + AVAudioTime.hostTime(forSeconds: leadTime)
+                player.play(at: AVAudioTime(hostTime: hostTime))
+            } else {
+                player.play()
+            }
             isRunning = true
+            return epoch
         } catch {
             stop()
             connectedSampleRate = nil
             print("Failed to start metronome: \(error)")
+            return nil
         }
     }
 
@@ -121,7 +147,7 @@ final class MetronomeService {
     }
 
     private func makeBarBuffer(sampleRate: Double) -> AVAudioPCMBuffer? {
-        let framesPerBeat = sampleRate * 60 / Double(bpm)
+        let framesPerBeat = sampleRate * 60 / Double(bpm) * 4 / Double(beatUnit)
         let frameCount = Int((framesPerBeat * Double(beatsPerBar)).rounded())
         guard frameCount > 0,
               let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1),
