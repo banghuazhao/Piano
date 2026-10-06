@@ -17,19 +17,27 @@ final class AdPrivacyManager: ObservableObject {
     @Published private(set) var canRequestAds = false
 
     private var didRequestConsent = false
+    private var hasResolvedConsent = false
     private var didStartMobileAds = false
     private var isPresentingPrivacyOptions = false
-    private var adsReadyCallbacks: [() -> Void] = []
+    private var onAdsReady: (() -> Void)?
 
     private init() {}
 
     func prepareAds(onAdsReady: @escaping () -> Void) {
+        guard PremiumStore.shared.hasDeterminedEntitlement,
+              !PremiumStore.shared.isPremium else { return }
         if didStartMobileAds {
-            onAdsReady()
+            canRequestAds = ConsentInformation.shared.canRequestAds
+            if canRequestAds { onAdsReady() }
             return
         }
 
-        adsReadyCallbacks.append(onAdsReady)
+        self.onAdsReady = onAdsReady
+        if hasResolvedConsent {
+            updateConsentState()
+            return
+        }
         guard !didRequestConsent else { return }
         didRequestConsent = true
 
@@ -38,13 +46,21 @@ final class AdPrivacyManager: ObservableObject {
                 // UMP must update its status at least once in every app session.
                 try await ConsentInformation.shared.requestConsentInfoUpdate(with: RequestParameters())
                 updatePrivacyOptionsRequirement()
-                try await ConsentForm.loadAndPresentIfRequired(from: nil)
+                if !PremiumStore.shared.isPremium {
+                    try await ConsentForm.loadAndPresentIfRequired(from: nil)
+                }
             } catch {
                 // UMP may still permit requests using consent from a previous session.
                 print("[ADS] Consent update failed: \(error.localizedDescription)")
             }
+            hasResolvedConsent = true
             updateConsentState()
         }
+    }
+
+    func stopAdsForPremium() {
+        canRequestAds = false
+        onAdsReady = nil
     }
 
     func presentPrivacyOptions() {
@@ -67,7 +83,9 @@ final class AdPrivacyManager: ObservableObject {
 
     private func updateConsentState() {
         updatePrivacyOptionsRequirement()
-        let isAllowed = ConsentInformation.shared.canRequestAds
+        let isAllowed = PremiumStore.shared.hasDeterminedEntitlement
+            && !PremiumStore.shared.isPremium
+            && ConsentInformation.shared.canRequestAds
         let shouldStartMobileAds = isAllowed && !didStartMobileAds
         if shouldStartMobileAds {
             didStartMobileAds = true
@@ -75,9 +93,9 @@ final class AdPrivacyManager: ObservableObject {
         }
         canRequestAds = isAllowed
         guard shouldStartMobileAds else { return }
-        let callbacks = adsReadyCallbacks
-        adsReadyCallbacks.removeAll()
-        callbacks.forEach { $0() }
+        let callback = onAdsReady
+        onAdsReady = nil
+        callback?()
     }
 }
 
@@ -96,7 +114,8 @@ final class OpenAd: NSObject, ObservableObject, FullScreenContentDelegate {
     func sceneDidBecomeActive() {
         let isReturning = hasEnteredBackground
         hasEnteredBackground = false
-        guard AdPrivacyManager.shared.canRequestAds else { return }
+        guard AdPrivacyManager.shared.canRequestAds,
+              !PremiumStore.shared.isPremium else { return }
 
         if isReturning && !PianoSessionActivity.shouldDeferAppOpenAd,
            !isShowing,
@@ -112,7 +131,9 @@ final class OpenAd: NSObject, ObservableObject, FullScreenContentDelegate {
     }
 
     func requestAppOpenAd() {
-        guard AdPrivacyManager.shared.canRequestAds, !isLoading, !isShowing else { return }
+        guard AdPrivacyManager.shared.canRequestAds,
+              !PremiumStore.shared.isPremium,
+              !isLoading, !isShowing else { return }
         guard availableAd() == nil else { return }
         guard !AdManager.GoogleAdsID.appOpenAdID.isEmpty else { return }
 
@@ -123,6 +144,7 @@ final class OpenAd: NSObject, ObservableObject, FullScreenContentDelegate {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.isLoading = false
+                guard !PremiumStore.shared.isPremium else { return }
                 guard let ad else {
                     if let error {
                         print("[ADS] App open ad failed to load: \(error.localizedDescription)")
@@ -162,6 +184,11 @@ final class OpenAd: NSObject, ObservableObject, FullScreenContentDelegate {
         isShowing = false
         requestAppOpenAd()
     }
+
+    func discardCachedAd() {
+        appOpenAd = nil
+        loadTime = nil
+    }
 }
 
 @MainActor
@@ -178,8 +205,18 @@ private func foregroundRootViewController() -> UIViewController? {
         ?? scene.windows.first?.rootViewController
 }
 
-struct BannerView: UIViewControllerRepresentable {
+struct BannerView: View {
+    @State private var premium = PremiumStore.shared
     @ObservedObject private var privacy = AdPrivacyManager.shared
+
+    var body: some View {
+        if premium.hasDeterminedEntitlement && !premium.isPremium && privacy.canRequestAds {
+            AdBannerControllerView()
+        }
+    }
+}
+
+private struct AdBannerControllerView: UIViewControllerRepresentable {
     @State private var viewWidth: CGFloat = .zero
 
     func makeUIViewController(context: Context) -> BannerViewController {
@@ -201,11 +238,6 @@ struct BannerView: UIViewControllerRepresentable {
 
     func updateUIViewController(_ controller: BannerViewController, context: Context) {
         let banner = controller.bannerView
-        guard privacy.canRequestAds else {
-            banner.isHidden = true
-            controller.lastRequestedWidth = .zero
-            return
-        }
         guard viewWidth > .zero, !AdManager.GoogleAdsID.bannerViewAdUnitID.isEmpty else { return }
         guard abs(controller.lastRequestedWidth - viewWidth) > 1 else { return }
 
@@ -222,9 +254,9 @@ struct BannerView: UIViewControllerRepresentable {
     }
 
     final class Coordinator: NSObject, BannerViewControllerWidthDelegate, BannerViewDelegate {
-        let parent: BannerView
+        let parent: AdBannerControllerView
 
-        init(_ parent: BannerView) {
+        init(_ parent: AdBannerControllerView) {
             self.parent = parent
         }
 
@@ -234,6 +266,7 @@ struct BannerView: UIViewControllerRepresentable {
 
         func bannerViewDidReceiveAd(_ bannerView: GoogleMobileAds.BannerView) {
             bannerView.isHidden = !AdPrivacyManager.shared.canRequestAds
+                || PremiumStore.shared.isPremium
         }
 
         func bannerView(

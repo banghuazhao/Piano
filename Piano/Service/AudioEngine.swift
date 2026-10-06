@@ -11,10 +11,13 @@ final class AudioEngine {
     private enum MIDIChannel {
         static let keyboard: UInt8 = 0
         static let playback: UInt8 = 1
+        static let external: UInt8 = 2
     }
 
     private let audioEngine = AVAudioEngine()
     private let sampler = AVAudioUnitSampler()
+    private let equalizer = AVAudioUnitEQ(numberOfBands: 2)
+    private let reverb = AVAudioUnitReverb()
     private var interruptionObserver: NSObjectProtocol?
     private var configurationObserver: NSObjectProtocol?
     private var isInterrupted = false
@@ -25,7 +28,18 @@ final class AudioEngine {
     init() {
         configureAudioSession()
         audioEngine.attach(sampler)
-        audioEngine.connect(sampler, to: audioEngine.mainMixerNode, format: nil)
+        audioEngine.attach(equalizer)
+        audioEngine.attach(reverb)
+        equalizer.bands[0].filterType = .lowShelf
+        equalizer.bands[0].frequency = 180
+        equalizer.bands[1].filterType = .highShelf
+        equalizer.bands[1].frequency = 3_200
+        equalizer.bands.forEach { $0.bypass = false }
+        reverb.loadFactoryPreset(.mediumHall)
+        audioEngine.connect(sampler, to: equalizer, format: nil)
+        audioEngine.connect(equalizer, to: reverb, format: nil)
+        audioEngine.connect(reverb, to: audioEngine.mainMixerNode, format: nil)
+        setSoundProfile(.concert)
         loadSoundFont()
         audioEngine.prepare()
         startEngineIfNeeded()
@@ -67,12 +81,14 @@ final class AudioEngine {
                 bankLSB: UInt8(kAUSampler_DefaultBankLSB)
             )
             // The playback channel uses the same piano preset as live playing.
-            sampler.sendProgramChange(
-                0,
-                bankMSB: UInt8(kAUSampler_DefaultMelodicBankMSB),
-                bankLSB: UInt8(kAUSampler_DefaultBankLSB),
-                onChannel: MIDIChannel.playback
-            )
+            for channel in [MIDIChannel.playback, MIDIChannel.external] {
+                sampler.sendProgramChange(
+                    0,
+                    bankMSB: UInt8(kAUSampler_DefaultMelodicBankMSB),
+                    bankLSB: UInt8(kAUSampler_DefaultBankLSB),
+                    onChannel: channel
+                )
+            }
         } catch {
             print("Failed to load piano soundfont: \(error)")
         }
@@ -157,6 +173,31 @@ final class AudioEngine {
         sampler.sendController(120, withValue: 0, onChannel: MIDIChannel.playback)
     }
 
+    func playMIDINote(_ note: UInt8, velocity: UInt8) {
+        guard !isInterrupted else { return }
+        startEngineIfNeeded()
+        sampler.startNote(note, withVelocity: velocity, onChannel: MIDIChannel.external)
+    }
+
+    func stopMIDINote(_ note: UInt8) {
+        sampler.stopNote(note, onChannel: MIDIChannel.external)
+    }
+
+    func setMIDISustain(_ enabled: Bool) {
+        sampler.sendController(64, withValue: enabled ? 127 : 0, onChannel: MIDIChannel.external)
+    }
+
+    func stopMIDINotes() {
+        sampler.sendController(64, withValue: 0, onChannel: MIDIChannel.external)
+        sampler.sendController(120, withValue: 0, onChannel: MIDIChannel.external)
+    }
+
+    func setSoundProfile(_ profile: PianoSoundProfile) {
+        equalizer.bands[0].gain = profile.lowShelfGainDB
+        equalizer.bands[1].gain = profile.highShelfGainDB
+        reverb.wetDryMix = profile.reverbWetDryMix
+    }
+
     func setSustain(_ enabled: Bool) {
         sampler.sendController(64, withValue: enabled ? 127 : 0, onChannel: MIDIChannel.keyboard)
     }
@@ -173,5 +214,6 @@ final class AudioEngine {
         sampler.sendController(64, withValue: 0, onChannel: MIDIChannel.keyboard)
         sampler.sendController(120, withValue: 0, onChannel: MIDIChannel.keyboard)
         stopRecordedNotes()
+        stopMIDINotes()
     }
 }

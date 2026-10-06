@@ -1,0 +1,31 @@
+{
+  "identifier": "C0893059-90F8-48DE-9668-9C363B2F73FA",
+  "nonRenewingSubscriptions": [],
+  "products": [
+    {
+      "displayPrice": "9.99",
+      "familyShareable": false,
+      "internalID": "4634F1F9-6BB2-4E63-BA28-BDFB5DA9BF95",
+      "localizations": [
+        {
+          "description": "Play ad-free and shape your piano sound with Warm Studio and Bright Hall.",
+          "displayName": "PianoFlow Premium",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "com.appsbay.PianoFlow.premium",
+      "referenceName": "PianoFlow Premium",
+      "type": "NonConsumable"
+    }
+  ],
+  "settings": {
+    "_failTransactionsEnabled": false,
+    "_locale": "en_US",
+    "_storefront": "USA"
+  },
+  "subscriptionGroups": [],
+  "version": {
+    "major": 3,
+    "minor": 0
+  }
+}

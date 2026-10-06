@@ -3,9 +3,10 @@ import SwiftUI
 struct PianoKeyView: View {
     let key: PianoKey
     let isPressed: Bool
+    var isTarget = false
     let showLabels: Bool
     let octaveNamesOnly: Bool
-    let onPress: () -> Void
+    let onPress: () -> Bool
     let onRelease: () -> Void
 
     var body: some View {
@@ -26,12 +27,21 @@ struct PianoKeyView: View {
                 )
             }
         }
+        .overlay {
+            if isTarget {
+                RoundedRectangle(cornerRadius: 4)
+                    .strokeBorder(PianoTheme.brass, lineWidth: 3)
+                    .padding(2)
+                    .allowsHitTesting(false)
+            }
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(key.displayName) piano key")
         .accessibilityValue(isPressed ? "Pressed" : "Released")
+        .accessibilityHint(isTarget ? "Next guided practice note" : "")
         .accessibilityAddTraits(.isButton)
         .accessibilityAction {
-            onPress()
+            guard onPress() else { return }
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 180_000_000)
                 onRelease()
@@ -47,7 +57,7 @@ struct PianoKeyView: View {
             isPressed: false,
             showLabels: true,
             octaveNamesOnly: false,
-            onPress: {},
+            onPress: { true },
             onRelease: {}
         )
         PianoKeyView(
@@ -55,7 +65,7 @@ struct PianoKeyView: View {
             isPressed: true,
             showLabels: true,
             octaveNamesOnly: false,
-            onPress: {},
+            onPress: { true },
             onRelease: {}
         )
     }

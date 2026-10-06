@@ -15,16 +15,29 @@ class PianoViewModel {
     var scrollPosition: Double = 0.5
     var showSettings = false
     private(set) var sustainEnabled = false
+    private(set) var midiSustainEnabled = false
     private(set) var masterVolume = 0.85
 
     let octaves = [1, 2, 3, 4, 5, 6, 7]
     private var pressedKeys: Set<PianoKey> = []
     private var playbackNotes: Set<UInt8> = []
+    private var midiNotes: Set<UInt8> = []
+    private var midiVelocities: [UInt8: UInt8] = [:]
+    var onAudioReset: (() -> Void)?
 
     private let audioEngine: AudioEngine
 
     var pressedMIDINotes: [UInt8] {
-        pressedKeys.map(\.midiNote).sorted()
+        Set(pressedKeys.map(\.midiNote)).union(midiNotes).sorted()
+    }
+
+    var recordingSustainEnabled: Bool { sustainEnabled || midiSustainEnabled }
+    var heldVelocities: [UInt8: UInt8] {
+        var velocities = midiVelocities
+        for key in pressedKeys where velocities[key.midiNote] == nil {
+            velocities[key.midiNote] = 100
+        }
+        return velocities
     }
 
     var currentOctave: Int? {
@@ -40,7 +53,11 @@ class PianoViewModel {
         self.audioEngine.onReset = { [weak self] in
             self?.pressedKeys.removeAll()
             self?.playbackNotes.removeAll()
+            self?.midiNotes.removeAll()
+            self?.midiVelocities.removeAll()
             self?.sustainEnabled = false
+            self?.midiSustainEnabled = false
+            self?.onAudioReset?()
         }
     }
 
@@ -84,19 +101,49 @@ class PianoViewModel {
     }
 
     func isKeyPressed(_ key: PianoKey) -> Bool {
-        pressedKeys.contains(key) || playbackNotes.contains(key.midiNote)
+        pressedKeys.contains(key) || playbackNotes.contains(key.midiNote) || midiNotes.contains(key.midiNote)
     }
 
     func setSustain(_ enabled: Bool) {
         guard sustainEnabled != enabled else { return }
         sustainEnabled = enabled
-        audioEngine.setSustain(enabled)
+        applyLiveSustain()
     }
 
     func setMasterVolume(_ value: Double) {
         guard value.isFinite else { return }
         masterVolume = min(max(value, 0), 1)
         audioEngine.setMasterVolume(masterVolume)
+    }
+
+    func setSoundProfile(_ profile: PianoSoundProfile) {
+        audioEngine.setSoundProfile(profile)
+    }
+
+    @discardableResult
+    func midiNoteOn(_ note: UInt8, velocity: UInt8) -> Bool {
+        guard midiNotes.insert(note).inserted else { return false }
+        midiVelocities[note] = velocity
+        audioEngine.playMIDINote(note, velocity: velocity)
+        return true
+    }
+
+    @discardableResult
+    func midiNoteOff(_ note: UInt8) -> Bool {
+        guard midiNotes.remove(note) != nil else { return false }
+        midiVelocities[note] = nil
+        audioEngine.stopMIDINote(note)
+        return true
+    }
+
+    func setMIDISustain(_ enabled: Bool) {
+        midiSustainEnabled = enabled
+        applyLiveSustain()
+    }
+
+    private func applyLiveSustain() {
+        audioEngine.setSustain(recordingSustainEnabled)
+        audioEngine.setMIDISustain(recordingSustainEnabled)
     }
 
     @discardableResult
@@ -126,6 +173,9 @@ class PianoViewModel {
         pressedKeys.removeAll()
         playbackNotes.removeAll()
         sustainEnabled = false
+        midiNotes.removeAll()
+        midiVelocities.removeAll()
+        midiSustainEnabled = false
         audioEngine.stopAllNotes()
     }
     

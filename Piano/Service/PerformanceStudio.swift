@@ -30,7 +30,11 @@ final class PerformanceStudio {
         loadTakes()
     }
 
-    func beginRecording(heldNotes: [UInt8] = [], sustain: Bool = false) {
+    func beginRecording(
+        heldNotes: [UInt8] = [],
+        heldVelocities: [UInt8: UInt8] = [:],
+        sustain: Bool = false
+    ) {
         guard !isRecording else { return }
         isRecording = true
         capturedEvents = []
@@ -39,11 +43,11 @@ final class PerformanceStudio {
         recordingStartedAt = ProcessInfo.processInfo.systemUptime
         captureSustain(sustain)
         for note in Set(heldNotes).sorted() {
-            capture(note: note, isNoteOn: true)
+            capture(note: note, isNoteOn: true, velocity: heldVelocities[note] ?? 100)
         }
     }
 
-    func capture(note: UInt8, isNoteOn: Bool) {
+    func capture(note: UInt8, isNoteOn: Bool, velocity: UInt8 = 100) {
         guard isRecording else { return }
         if isNoteOn {
             guard heldRecordingNotes.insert(note).inserted else { return }
@@ -54,7 +58,8 @@ final class PerformanceStudio {
             PerformanceEvent(
                 note: note,
                 time: ProcessInfo.processInfo.systemUptime - recordingStartedAt,
-                isNoteOn: isNoteOn
+                isNoteOn: isNoteOn,
+                velocity: isNoteOn ? min(max(velocity, 1), 127) : 0
             )
         )
     }
@@ -85,11 +90,13 @@ final class PerformanceStudio {
         recordingSustain = false
         guard capturedEvents.contains(where: { $0.sustain == nil && $0.isNoteOn }) else { return nil }
 
+        let createdAt = Date()
         let take = PerformanceTake(
             id: UUID(),
-            createdAt: Date(),
+            createdAt: createdAt,
             duration: duration,
-            events: capturedEvents
+            events: capturedEvents,
+            title: "Take \(createdAt.formatted(date: .abbreviated, time: .shortened))"
         )
         guard take.isValid else {
             lastError = "This performance was too long to save."
@@ -103,13 +110,36 @@ final class PerformanceStudio {
 
     func play(
         _ take: PerformanceTake,
-        noteOn: @escaping (UInt8) -> Void,
+        options: PerformancePlaybackOptions = .init(),
+        noteOn: @escaping (UInt8, UInt8) -> Void,
         noteOff: @escaping (UInt8) -> Void,
         sustain: @escaping (Bool) -> Void
     ) {
         stopPlayback()
         guard take.isValid else {
             lastError = "This performance could not be played."
+            return
+        }
+        guard options.rate.isFinite, (0.5...2).contains(options.rate) else {
+            lastError = "Choose a playback speed between 0.5× and 2×."
+            return
+        }
+        let playbackTake: PerformanceTake
+        if let region = options.region {
+            guard let excerpt = RecordingEditor.excerpt(
+                from: take,
+                start: region.lowerBound,
+                end: region.upperBound
+            ) else {
+                lastError = "Choose a section containing notes."
+                return
+            }
+            playbackTake = excerpt
+        } else {
+            playbackTake = take
+        }
+        guard playbackTake.noteCount > 0 else {
+            lastError = "This section has no notes to play."
             return
         }
         let generation = UUID()
@@ -119,31 +149,31 @@ final class PerformanceStudio {
         playbackSustain = sustain
         playbackTask = Task { [weak self] in
             guard let self else { return }
-            let startedAt = ProcessInfo.processInfo.systemUptime
-            for event in take.events {
-                guard await self.waitUntil(event.time, startedAt: startedAt),
-                      self.playbackGeneration == generation else { break }
-                if let isSustained = event.sustain {
-                    sustain(isSustained)
-                    continue
+            repeat {
+                let startedAt = ProcessInfo.processInfo.systemUptime
+                for event in playbackTake.events {
+                    guard await self.waitUntil(event.time / options.rate, startedAt: startedAt),
+                          self.playbackGeneration == generation else { return }
+                    if let isSustained = event.sustain {
+                        sustain(isSustained)
+                    } else if event.isNoteOn {
+                        self.playbackHeldNotes.insert(event.note)
+                        noteOn(event.note, event.velocity)
+                    } else {
+                        self.playbackHeldNotes.remove(event.note)
+                        noteOff(event.note)
+                    }
                 }
-                if event.isNoteOn {
-                    self.playbackHeldNotes.insert(event.note)
-                    noteOn(event.note)
-                } else {
-                    self.playbackHeldNotes.remove(event.note)
-                    noteOff(event.note)
-                }
-            }
-            if !Task.isCancelled, self.playbackGeneration == generation {
-                guard await self.waitUntil(take.duration, startedAt: startedAt),
+                let cycleDuration = max(playbackTake.duration / options.rate, options.loop ? 0.05 : 0)
+                guard await self.waitUntil(cycleDuration, startedAt: startedAt),
                       self.playbackGeneration == generation else { return }
-                self.releasePlaybackNotes()
+                self.releasePlaybackNotes(clearCallback: false)
                 sustain(false)
-                self.playbackSustain = nil
-                self.playingTakeID = nil
-                self.playbackTask = nil
-            }
+            } while options.loop
+            self.playbackNoteOff = nil
+            self.playbackSustain = nil
+            self.playingTakeID = nil
+            self.playbackTask = nil
         }
     }
 
@@ -177,6 +207,39 @@ final class PerformanceStudio {
         takes = remainingTakes
     }
 
+    @discardableResult
+    func rename(_ take: PerformanceTake, to proposedTitle: String) -> Bool {
+        let title = proposedTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty, title.count <= 64,
+              let index = takes.firstIndex(where: { $0.id == take.id }) else {
+            lastError = "Enter a title of 1–64 characters."
+            return false
+        }
+        var updatedTakes = takes
+        updatedTakes[index] = PerformanceTake(
+            id: take.id,
+            createdAt: take.createdAt,
+            duration: take.duration,
+            events: take.events,
+            title: title
+        )
+        guard persistTakes(updatedTakes) else { return false }
+        takes = updatedTakes
+        return true
+    }
+
+    @discardableResult
+    func saveExcerpt(of take: PerformanceTake, from start: TimeInterval, to end: TimeInterval) -> PerformanceTake? {
+        guard let excerpt = RecordingEditor.excerpt(from: take, start: start, end: end) else {
+            lastError = "Choose a section containing notes."
+            return nil
+        }
+        let updatedTakes = [excerpt] + takes
+        guard persistTakes(updatedTakes) else { return nil }
+        takes = updatedTakes
+        return excerpt
+    }
+
     func midiFileURL(for take: PerformanceTake) -> URL? {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("PianoFlow-\(take.id.uuidString).mid")
@@ -189,12 +252,46 @@ final class PerformanceStudio {
         }
     }
 
-    private func releasePlaybackNotes() {
+    func audioFileURL(
+        for take: PerformanceTake,
+        format: RecordingAudioFormat,
+        profile: PianoSoundProfile,
+        options: PerformancePlaybackOptions = .init()
+    ) async -> URL? {
+        if profile.isPremium {
+            await PremiumStore.shared.prepare()
+            guard !Task.isCancelled else { return nil }
+            guard PremiumStore.shared.isPremium else {
+                lastError = "Unlock Premium to export with this piano sound."
+                return nil
+            }
+        }
+        do {
+            let url = try await AudioExporter.export(
+                take: take,
+                format: format,
+                profile: profile,
+                options: options
+            )
+            if Task.isCancelled {
+                try? FileManager.default.removeItem(at: url)
+                return nil
+            }
+            return url
+        } catch is CancellationError {
+            return nil
+        } catch {
+            lastError = error.localizedDescription
+            return nil
+        }
+    }
+
+    private func releasePlaybackNotes(clearCallback: Bool = true) {
         for note in playbackHeldNotes {
             playbackNoteOff?(note)
         }
         playbackHeldNotes = []
-        playbackNoteOff = nil
+        if clearCallback { playbackNoteOff = nil }
     }
 
     private func loadTakes() {

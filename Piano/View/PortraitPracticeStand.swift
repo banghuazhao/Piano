@@ -5,13 +5,14 @@ struct PortraitPracticeStand: View {
     let chordName: String
     let takeCount: Int
     let isRecording: Bool
+    var soundTitle = "Concert Grand"
     let onRecord: () -> Void
     let onLibrary: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("PIANOFLOW  /  CONCERT GRAND")
+                Text("PIANOFLOW  /  \(soundTitle.uppercased())")
                     .font(.system(.caption, design: .rounded, weight: .bold))
                     .tracking(2)
                     .foregroundStyle(PianoTheme.brass)

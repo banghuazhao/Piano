@@ -5,16 +5,22 @@ struct PianoView: View {
     @State private var viewModel = PianoViewModel()
     @State private var studio = PerformanceStudio()
     @State private var metronome = MetronomeService()
+    @State private var practice = PracticeSession()
+    @State private var midi = MIDIInputService()
+    @State private var premium = PremiumStore.shared
     @State private var scrollAction: ((AnyHashable, UnitPoint?) -> Void)?
     @State private var navigatorPosition = 0.5
     @State private var showLibrary = false
     @State private var showTempo = false
+    @State private var showPractice = false
+    @State private var keyboardViewportWidth: CGFloat = 0
 
     @AppStorage("keyWidth") private var keyWidth = 50.0
     @AppStorage("hapticsEnabled") private var hapticsEnabled = false
     @AppStorage("showKeyDisplayNames") private var showKeyDisplayNames = true
     @AppStorage("showFirstKeyNameForOctavesOnly") private var octaveNamesOnly = false
     @AppStorage("masterVolume") private var masterVolume = 0.85
+    @AppStorage("soundProfile") private var soundProfileRaw = PianoSoundProfile.concert.rawValue
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -31,11 +37,19 @@ struct PianoView: View {
                     onRecord: toggleRecording,
                     onPlay: togglePlayback,
                     onLibrary: { showLibrary = true },
+                    onPractice: { showPractice = true },
                     onSustain: toggleSustain,
                     onMetronome: toggleMetronome,
                     onTempo: { showTempo = true },
                     onSettings: { viewModel.showSettings = true }
                 )
+
+                if practice.exercise != nil {
+                    PracticeSessionPanel(session: practice)
+                        .padding(.horizontal, 12)
+                        .padding(.top, 8)
+                        .padding(.bottom, 4)
+                }
 
                 KeyboardNavigator(
                     position: $navigatorPosition,
@@ -72,6 +86,7 @@ struct PianoView: View {
                                 chordName: ChordDetector.name(for: viewModel.pressedMIDINotes),
                                 takeCount: studio.takes.count,
                                 isRecording: studio.isRecording,
+                                soundTitle: activeSoundProfile.title,
                                 onRecord: toggleRecording,
                                 onLibrary: { showLibrary = true }
                             )
@@ -79,6 +94,8 @@ struct PianoView: View {
                         keyboard(height: keyboardHeight)
                             .frame(height: keyboardHeight)
                     }
+                    .onAppear { keyboardViewportWidth = keyArea.size.width }
+                    .onChange(of: keyArea.size.width) { _, width in keyboardViewportWidth = width }
                 }
 
                 Rectangle()
@@ -89,10 +106,13 @@ struct PianoView: View {
         .background(PianoTheme.background.ignoresSafeArea())
         .preferredColorScheme(.dark)
         .sheet(isPresented: $viewModel.showSettings) {
-            SettingsView()
+            SettingsView(midi: midi)
         }
         .sheet(isPresented: $showLibrary) {
             PerformanceLibraryView(studio: studio, onPlay: playTake, onStop: stopPlayback)
+        }
+        .sheet(isPresented: $showPractice) {
+            PracticeLibraryView(session: practice)
         }
         .popover(isPresented: $showTempo) {
             TempoPopoverView(metronome: metronome)
@@ -101,13 +121,31 @@ struct PianoView: View {
             viewModel.scrollPosition = position
             scrollToPosition(position)
         }
-        .onAppear { viewModel.setMasterVolume(masterVolume) }
+        .onAppear {
+            viewModel.setMasterVolume(masterVolume)
+            applySoundProfile()
+            configureMIDI()
+        }
         .onChange(of: masterVolume) { _, volume in
             viewModel.setMasterVolume(volume)
         }
         .onChange(of: scenePhase) { _, phase in
+            midi.setActive(phase == .active)
             if phase != .active { endActiveSession() }
         }
+        .onChange(of: soundProfileRaw) { _, _ in applySoundProfile() }
+        .onChange(of: premium.isPremium) { _, _ in applySoundProfile() }
+        .onChange(of: premium.hasDeterminedEntitlement) { _, _ in applySoundProfile() }
+        .onChange(of: practice.isActive) { _, active in
+            if active {
+                PianoSessionActivity.markPlayed()
+                stopPlayback()
+                revealPracticeNotes(force: true)
+            }
+        }
+        .onChange(of: practice.targetNotes) { _, _ in revealPracticeNotes() }
+        .onChange(of: practice.exercise?.id) { _, _ in revealPracticeNotes(force: true) }
+        .onChange(of: keyboardViewportWidth) { _, _ in revealPracticeNotes() }
     }
 
     private func keyboard(height: CGFloat) -> some View {
@@ -119,12 +157,13 @@ struct PianoView: View {
                             PianoKeyView(
                                 key: key,
                                 isPressed: viewModel.isKeyPressed(key),
+                                isTarget: practice.targetNotes.contains(key.midiNote),
                                 showLabels: showKeyDisplayNames,
                                 octaveNamesOnly: octaveNamesOnly,
                                 onPress: { press(key) },
                                 onRelease: { release(key) }
                             )
-                            .frame(width: keyWidth, height: height)
+                            .frame(width: playingKeyWidth, height: height)
                             .id(key.id)
                         }
                     }
@@ -132,19 +171,20 @@ struct PianoView: View {
                     HStack(spacing: 1) {
                         ForEach(viewModel.whiteKeys) { key in
                             Color.clear
-                                .frame(width: keyWidth, height: height)
+                                .frame(width: playingKeyWidth, height: height)
                                 .overlay(alignment: .topTrailing) {
                                     if let blackKey = key.nextBlackKey() {
                                         PianoKeyView(
                                             key: blackKey,
                                             isPressed: viewModel.isKeyPressed(blackKey),
+                                            isTarget: practice.targetNotes.contains(blackKey.midiNote),
                                             showLabels: showKeyDisplayNames,
                                             octaveNamesOnly: octaveNamesOnly,
                                             onPress: { press(blackKey) },
                                             onRelease: { release(blackKey) }
                                         )
-                                        .frame(width: keyWidth * 0.62, height: height * 0.62)
-                                        .offset(x: keyWidth * 0.31)
+                                        .frame(width: playingKeyWidth * 0.62, height: height * 0.62)
+                                        .offset(x: playingKeyWidth * 0.31)
                                     }
                                 }
                         }
@@ -154,8 +194,8 @@ struct PianoView: View {
                 .overlay {
                     KeyboardTouchSurface(
                         whiteKeys: viewModel.whiteKeys,
-                        keyWidth: keyWidth,
-                        onPress: press,
+                        keyWidth: playingKeyWidth,
+                        onPress: { _ = press($0) },
                         onRelease: release
                     )
                 }
@@ -179,21 +219,42 @@ struct PianoView: View {
 
     private var totalKeyboardWidth: CGFloat {
         let count = viewModel.whiteKeys.count
-        return CGFloat(count) * keyWidth + CGFloat(max(0, count - 1))
+        return CGFloat(count) * playingKeyWidth + CGFloat(max(0, count - 1))
     }
 
-    private func press(_ key: PianoKey) {
-        guard viewModel.keyPressed(key) else { return }
+    /// Temporarily fit chord targets while keeping the user's preferred key width.
+    private var playingKeyWidth: CGFloat {
+        guard practice.targetNotes.count > 1, keyboardViewportWidth > 0,
+              let range = practiceKeyRange else { return keyWidth }
+        let keysToFit = CGFloat(range.upperBound - range.lowerBound + 4)
+        return max(30, min(keyWidth, keyboardViewportWidth / keysToFit - 1))
+    }
+
+    private var practiceKeyRange: ClosedRange<Int>? {
+        let indices = practice.targetNotes.compactMap { note in
+            viewModel.whiteKeys.lastIndex(where: { $0.midiNote <= note })
+        }
+        guard let first = indices.min(), let last = indices.max() else { return nil }
+        return first...last
+    }
+
+    @discardableResult
+    private func press(_ key: PianoKey) -> Bool {
+        let wasHeld = viewModel.pressedMIDINotes.contains(key.midiNote)
+        guard viewModel.keyPressed(key) else { return false }
         PianoSessionActivity.markPlayed()
-        studio.capture(note: key.midiNote, isNoteOn: true)
+        if !wasHeld { studio.capture(note: key.midiNote, isNoteOn: true) }
+        practice.noteOn(key.midiNote, heldNotes: Set(viewModel.pressedMIDINotes))
         if hapticsEnabled {
             UISelectionFeedbackGenerator().selectionChanged()
         }
+        return true
     }
 
     private func release(_ key: PianoKey) {
-        if viewModel.keyReleased(key) {
+        if viewModel.keyReleased(key), !viewModel.pressedMIDINotes.contains(key.midiNote) {
             studio.capture(note: key.midiNote, isNoteOn: false)
+            practice.noteOff(key.midiNote)
         }
     }
 
@@ -219,7 +280,8 @@ struct PianoView: View {
             stopPlayback()
             studio.beginRecording(
                 heldNotes: viewModel.pressedMIDINotes,
-                sustain: viewModel.sustainEnabled
+                heldVelocities: viewModel.heldVelocities,
+                sustain: viewModel.recordingSustainEnabled
             )
         }
     }
@@ -228,16 +290,18 @@ struct PianoView: View {
         if studio.playingTakeID != nil {
             stopPlayback()
         } else if let take = studio.takes.first {
-            playTake(take)
+            playTake(take, options: .init())
         }
     }
 
-    private func playTake(_ take: PerformanceTake) {
+    private func playTake(_ take: PerformanceTake, options: PerformancePlaybackOptions) {
         PianoSessionActivity.markPlayed()
         if studio.isRecording { studio.finishRecording() }
+        practice.stop()
         studio.play(
             take,
-            noteOn: { _ = viewModel.playbackNoteOn($0) },
+            options: options,
+            noteOn: { note, velocity in _ = viewModel.playbackNoteOn(note, velocity: velocity) },
             noteOff: { _ = viewModel.playbackNoteOff($0) },
             sustain: { viewModel.setPlaybackSustain($0) }
         )
@@ -250,8 +314,11 @@ struct PianoView: View {
 
     private func toggleSustain() {
         let enabled = !viewModel.sustainEnabled
+        let wasEnabled = viewModel.recordingSustainEnabled
         viewModel.setSustain(enabled)
-        studio.captureSustain(enabled)
+        if wasEnabled != viewModel.recordingSustainEnabled {
+            studio.captureSustain(viewModel.recordingSustainEnabled)
+        }
     }
 
     private func toggleMetronome() {
@@ -264,13 +331,86 @@ struct PianoView: View {
     }
 
     private func endActiveSession() {
-        if studio.isRecording || studio.playingTakeID != nil || metronome.isRunning {
+        if studio.isRecording || studio.playingTakeID != nil || metronome.isRunning || practice.isActive {
             PianoSessionActivity.markPlayed()
         }
         if studio.isRecording { studio.finishRecording() }
         stopPlayback()
         metronome.stop()
         viewModel.stopAllNotes()
+        for note: UInt8 in 21...108 { practice.noteOff(note) }
+    }
+
+    private func applySoundProfile() {
+        let requested = PianoSoundProfile(rawValue: soundProfileRaw) ?? .concert
+        let allowed = !requested.isPremium || premium.isPremium
+        viewModel.setSoundProfile(allowed ? requested : .concert)
+        if premium.hasDeterminedEntitlement && !allowed {
+            soundProfileRaw = PianoSoundProfile.concert.rawValue
+        }
+    }
+
+    private var activeSoundProfile: PianoSoundProfile {
+        let profile = PianoSoundProfile(rawValue: soundProfileRaw) ?? .concert
+        return profile.isPremium && !premium.isPremium ? .concert : profile
+    }
+
+    private func revealPracticeNotes(force: Bool = false) {
+        guard let range = practiceKeyRange else { return }
+        let denominator = Double(viewModel.whiteKeys.count - 1)
+        let center = Double(range.lowerBound + range.upperBound) / 2
+        let halfVisible = max(0, keyboardViewportWidth / (playingKeyWidth + 1) / 2 - 1.5)
+        let visibleCenter = navigatorPosition * denominator
+        if force || Double(range.lowerBound) < visibleCenter - halfVisible
+            || Double(range.upperBound) > visibleCenter + halfVisible {
+            navigatorPosition = center / denominator
+        }
+    }
+
+    private func configureMIDI() {
+        midi.onEvent = { [weak viewModel, weak studio, weak practice] event in
+            guard let viewModel, let studio, let practice else { return }
+            Self.handleMIDI(event, viewModel: viewModel, studio: studio, practice: practice)
+        }
+        viewModel.onAudioReset = { [weak midi, weak studio, weak practice, weak metronome] in
+            midi?.resetHeldNotes()
+            if studio?.isRecording == true { studio?.finishRecording() }
+            studio?.stopPlayback()
+            metronome?.stop()
+            for note: UInt8 in 21...108 { practice?.noteOff(note) }
+        }
+        midi.setActive(scenePhase == .active)
+        midi.start()
+    }
+
+    private static func handleMIDI(
+        _ event: MIDIInputEvent, viewModel: PianoViewModel,
+        studio: PerformanceStudio, practice: PracticeSession
+    ) {
+        switch event {
+        case let .noteOn(note, velocity):
+            let wasHeld = viewModel.pressedMIDINotes.contains(note)
+            guard viewModel.midiNoteOn(note, velocity: velocity) else { return }
+            PianoSessionActivity.markPlayed()
+            if !wasHeld { studio.capture(note: note, isNoteOn: true, velocity: velocity) }
+            practice.noteOn(note, heldNotes: Set(viewModel.pressedMIDINotes))
+        case let .noteOff(note):
+            if viewModel.midiNoteOff(note), !viewModel.pressedMIDINotes.contains(note) {
+                studio.capture(note: note, isNoteOn: false)
+                practice.noteOff(note)
+            }
+        case let .sustain(enabled):
+            let wasEnabled = viewModel.recordingSustainEnabled
+            viewModel.setMIDISustain(enabled)
+            if wasEnabled != viewModel.recordingSustainEnabled {
+                studio.captureSustain(viewModel.recordingSustainEnabled)
+            }
+        case .allSoundOff:
+            if studio.isRecording { studio.finishRecording() }
+            studio.stopPlayback()
+            viewModel.stopAllNotes()
+            for note: UInt8 in 21...108 { practice.noteOff(note) }
+        }
     }
 }
 

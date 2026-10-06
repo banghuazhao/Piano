@@ -7,12 +7,13 @@ import SwiftUI
 struct PerformanceTakeCard: View {
     let take: PerformanceTake
     let studio: PerformanceStudio
-    let onPlay: (PerformanceTake) -> Void
+    let onPlay: (PerformanceTake, PerformancePlaybackOptions) -> Void
     let onStop: () -> Void
 
     @State private var midiURL: URL?
     @State private var didPrepareMIDI = false
     @State private var showingDeleteConfirmation = false
+    @State private var showingTools = false
 
     private var isPlaying: Bool {
         studio.playingTakeID == take.id
@@ -41,13 +42,12 @@ struct PerformanceTakeCard: View {
                     .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(take.createdAt.formatted(date: .abbreviated, time: .shortened))
+                    Text(take.title)
                         .font(.headline)
                         .foregroundStyle(PianoTheme.ivory)
 
-                    Text("PERFORMANCE TAKE")
-                        .font(.caption.bold())
-                        .tracking(1.5)
+                    Text(take.createdAt.formatted(date: .abbreviated, time: .shortened))
+                        .font(.caption)
                         .foregroundStyle(PianoTheme.secondary)
                 }
 
@@ -82,6 +82,8 @@ struct PerformanceTakeCard: View {
                         .fixedSize(horizontal: true, vertical: false)
                     midiControl
                         .fixedSize(horizontal: true, vertical: false)
+                    toolsButton
+                        .fixedSize(horizontal: true, vertical: false)
                     Spacer(minLength: 0)
                     deleteButton
                         .fixedSize(horizontal: true, vertical: false)
@@ -90,6 +92,7 @@ struct PerformanceTakeCard: View {
                 VStack(alignment: .leading, spacing: 10) {
                     playbackButton
                     midiControl
+                    toolsButton
                     deleteButton
                 }
             }
@@ -107,6 +110,9 @@ struct PerformanceTakeCard: View {
             midiURL = studio.midiFileURL(for: take)
             didPrepareMIDI = true
         }
+        .sheet(isPresented: $showingTools) {
+            RecordingToolsView(take: take, studio: studio, onPlay: onPlay, onStop: onStop)
+        }
     }
 
     private var playbackButton: some View {
@@ -114,7 +120,7 @@ struct PerformanceTakeCard: View {
             if isPlaying {
                 onStop()
             } else {
-                onPlay(take)
+                onPlay(take, .init())
             }
         }
         .buttonStyle(.borderedProminent)
@@ -122,6 +128,16 @@ struct PerformanceTakeCard: View {
         .foregroundStyle(PianoTheme.background)
         .frame(minHeight: 44)
         .accessibilityHint(isPlaying ? "Stops this performance" : "Plays this performance")
+    }
+
+    private var toolsButton: some View {
+        Button("Tools", systemImage: "slider.horizontal.3") {
+            showingTools = true
+        }
+        .buttonStyle(.bordered)
+        .tint(PianoTheme.ivory)
+        .frame(minHeight: 44)
+        .accessibilityHint("Rename, loop, trim, and export audio")
     }
 
     @ViewBuilder

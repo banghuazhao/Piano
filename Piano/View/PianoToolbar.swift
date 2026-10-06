@@ -16,6 +16,7 @@ struct PianoToolbar: View {
     let onRecord: () -> Void
     let onPlay: () -> Void
     let onLibrary: () -> Void
+    let onPractice: () -> Void
     let onSustain: () -> Void
     let onMetronome: () -> Void
     let onTempo: () -> Void
@@ -131,6 +132,7 @@ struct PianoToolbar: View {
 
     private var moreControls: some View {
         Menu {
+            Button("Guided practice", systemImage: "graduationcap", action: onPractice)
             Button("Saved performances", systemImage: "square.stack", action: onLibrary)
             Button(sustainEnabled ? "Turn sustain off" : "Turn sustain on", systemImage: "waveform.path", action: onSustain)
             Button(metronomeRunning ? "Stop metronome" : "Start metronome", systemImage: "metronome", action: onMetronome)
@@ -207,6 +209,13 @@ struct PianoToolbar: View {
                 isEnabled: hasTake || isPlaying,
                 compact: compact,
                 action: onPlay
+            )
+            control(
+                title: "Guided practice",
+                caption: "PRACTICE",
+                symbol: "graduationcap",
+                compact: compact,
+                action: onPractice
             )
             control(
                 title: "Saved recordings",
@@ -328,6 +337,7 @@ struct PianoToolbar: View {
         onRecord: {},
         onPlay: {},
         onLibrary: {},
+        onPractice: {},
         onSustain: {},
         onMetronome: {},
         onTempo: {},

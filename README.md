@@ -1,6 +1,6 @@
 ## 🎹 PianoFlow
 
-A tactile iOS piano keyboard built with SwiftUI and AVAudioEngine. Play the full 88-key A0–C8 range with SoundFont piano audio, multi-touch chords, sustain, a metronome, and saved MIDI performances.
+A tactile iOS piano keyboard built with SwiftUI and AVAudioEngine. Play the full 88-key A0–C8 range, practice with highlighted notes, connect a MIDI keyboard, and save or export your performances.
 
 <img src="screenshots/pianoflow-premium.jpg" alt="PianoFlow instrument view" width="720" />
 
@@ -13,8 +13,10 @@ A tactile iOS piano keyboard built with SwiftUI and AVAudioEngine. Play the full
 - **🧭 Range navigation**: Octave shortcuts and a range slider keep navigation separate from the playing surface
 - **⚙️ Customizable Settings**: Adjustable key width, key labels, piano volume, and haptic feedback
 - **🎵 Expressive playing**: SoundFont-backed piano audio, balanced note release, sustain, and a live chord readout
-- **⏱️ Practice tools**: Audible metronome with adjustable tempo, meter, and click volume
-- **⏺️ Performance library**: Record note and sustain events, replay takes, and share Standard MIDI files
+- **⏱️ Guided practice**: Scales, arpeggios, chords, and familiar melodies with highlighted keys, accuracy feedback, a daily goal, and local progress
+- **🎛️ MIDI input**: USB and Bluetooth MIDI keyboards with velocity and sustain pedal support
+- **⏺️ Performance library**: Record notes, velocity, and sustain; rename, trim copies, loop a section, adjust playback speed, and share MIDI, WAV, or M4A files
+- **🔊 PianoFlow Premium**: A one-time purchase removes ads and adds Warm Studio and Bright Hall sound profiles
 - **📱 Instrument design**: Responsive ivory and ebony keys with a compact dark control panel
 - **🏗️ MVVM Architecture**: Clean separation with `@Observable` view models and Swift concurrency
 
@@ -27,8 +29,11 @@ A tactile iOS piano keyboard built with SwiftUI and AVAudioEngine. Play the full
 **🔄 Data Flow**:
 - 📱 `PianoView` renders the scrollable keyboard and handles user interactions
 - 🎚️ `PianoViewModel` manages key state, scroll position, and audio playback
-- 🔊 `AudioEngine` handles the audio session and SoundFont, while `MetronomeService` produces the click track
-- 💾 `PerformanceStudio` saves note events locally, replays takes, and uses `MIDIExporter` for sharing
+- 🔊 `AudioEngine` handles the audio session, SoundFont, EQ, and reverb, while `MetronomeService` produces the click track
+- 💾 `PerformanceStudio` saves note events locally; `RecordingEditor`, `MIDIExporter`, and `AudioExporter` provide editing and sharing
+- 🎼 `PracticeSession` tracks physical note events and daily progress; recorded playback does not count toward practice
+- 🎛️ `MIDIInputService` copies CoreMIDI callback data before returning and combines held keys from multiple devices
+- 🛍️ `PremiumStore` grants access only from verified StoreKit transactions
 - ⚙️ `SettingsView` provides customization options with persistent storage
 
 ### 🛠️ Requirements
@@ -68,7 +73,9 @@ Piano/
 - **🧭 Navigation**: 
   - Use octave buttons (C1–C7) to jump across the full A0–C8 range
   - Drag the range slider for fine control
-- **⏺️ Record and replay**: Tap Record, play, then tap Stop. Play replays the latest take; Takes opens saved performances and MIDI sharing.
+- **⏺️ Record and replay**: Tap Record, play, then tap Stop. Play replays the latest take; Takes opens saved performances. Tools offers naming, speed, loops, trimmed copies, and WAV/M4A export.
+- **🎼 Guided practice**: Open Practice (or More → Guided practice on compact screens), choose an exercise, and follow the brass outlines. Release repeated notes before playing them again. Accuracy measures note choices rather than rhythm.
+- **🎛️ MIDI keyboard**: Enable keyboard input in Settings. Plug in a USB MIDI keyboard, or choose Connect Bluetooth MIDI to use Apple's native pairing browser.
 - **🎛️ Sustain and metronome**: Toggle them on the control panel. Tap the BPM display to adjust tempo, beats per bar, and click volume.
 - **⚙️ Settings**: Tap the gear icon to access:
   - Key width adjustment (30–90 points)
@@ -76,12 +83,14 @@ Piano/
   - Toggle haptic feedback
   - Octave-specific key name display options
   - Piano volume
+  - Piano sound profiles and the one-time Premium upgrade
 - **🎨 Customization**: Replace `Piano.sf2` with a licensed SoundFont to change the piano sound.
 
-### 🗺️ Roadmap
-- **🎹 MIDI Support**: MIDI input/output for external controllers
-- **🎼 Guided practice**: Scale and song lessons with progress feedback
-- **🎙️ Audio export**: Render a performance to an audio file in addition to MIDI
+### Verification and Premium setup
+
+Run `bash Scripts/check-features.sh` to check practice progress, MIDI input state, recording boundaries, playback, and file export models. Build the `Piano` scheme for normal development. Use its local StoreKit configuration to test Premium; see [Premium setup](Docs/PremiumSetup.md) for product configuration and purchase testing.
+
+Warm Studio and Bright Hall apply EQ and reverb to the bundled piano samples. WAV/M4A export renders one selected pass at the chosen speed and preserves the sound profile; a playback loop does not create an endless export.
 
 ### 🤝 Contributing
 - 📝 Open an issue or pull request on GitHub

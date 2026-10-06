@@ -19,7 +19,7 @@ enum MIDIExporter {
             } else {
                 track.append(event.isNoteOn ? 0x90 : 0x80)
                 track.append(event.note)
-                track.append(event.isNoteOn ? 100 : 0)
+                track.append(event.isNoteOn ? event.velocity : 0)
             }
             previousTick = tick
         }

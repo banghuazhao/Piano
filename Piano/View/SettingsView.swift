@@ -6,11 +6,13 @@ import SwiftUI
 
 @MainActor
 struct SettingsView: View {
+    var midi: MIDIInputService = MIDIInputService()
     @AppStorage("showKeyDisplayNames") private var showKeyDisplayNames = true
     @AppStorage("showFirstKeyNameForOctavesOnly") private var showFirstKeyNameForOctavesOnly = false
     @AppStorage("hapticsEnabled") private var hapticsEnabled = false
     @AppStorage("keyWidth") private var keyWidth = 50.0
     @AppStorage("masterVolume") private var masterVolume = 0.85
+    @AppStorage("soundProfile") private var soundProfileRaw = PianoSoundProfile.concert.rawValue
     @ObservedObject private var privacy = AdPrivacyManager.shared
 
     @Environment(\.dismiss) private var dismiss
@@ -21,6 +23,15 @@ struct SettingsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     SettingsHeaderView()
+
+                    PremiumSettingsSection()
+
+                    SoundProfilePicker(selection: Binding(
+                        get: { PianoSoundProfile(rawValue: soundProfileRaw) ?? .concert },
+                        set: { soundProfileRaw = $0.rawValue }
+                    ))
+
+                    MIDISettingsSection(midi: midi)
 
                     SettingsPanel(title: "Keyboard", subtitle: "Make every note easy to find", symbol: "pianokeys") {
                         SettingsToggleRow(
@@ -77,7 +88,7 @@ struct SettingsView: View {
                     .font(.subheadline)
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .foregroundStyle(PianoTheme.secondary)
-                    .accessibilityHint("Resets key labels, key width, touch feedback, and piano volume")
+                    .accessibilityHint("Resets key labels, key width, touch feedback, piano sound, and piano volume")
                 }
                 .frame(maxWidth: 740)
                 .frame(maxWidth: .infinity)
@@ -122,6 +133,7 @@ struct SettingsView: View {
         hapticsEnabled = false
         keyWidth = 50
         masterVolume = 0.85
+        soundProfileRaw = PianoSoundProfile.concert.rawValue
     }
 }
 

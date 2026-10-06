@@ -6,7 +6,7 @@ import SwiftUI
 
 struct PerformanceLibraryView: View {
     let studio: PerformanceStudio
-    let onPlay: (PerformanceTake) -> Void
+    let onPlay: (PerformanceTake, PerformancePlaybackOptions) -> Void
     let onStop: () -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -70,7 +70,7 @@ struct PerformanceLibraryView: View {
                                 .padding(.horizontal, 11)
                                 .padding(.vertical, 5)
                                 .background(PianoTheme.brass.opacity(0.12), in: Capsule())
-                                .accessibilityLabel("\(studio.takes.count) saved performances")
+                                .accessibilityLabel(studio.takes.count == 1 ? "1 saved performance" : "\(studio.takes.count) saved performances")
                         }
 
                         LazyVStack(spacing: 14) {
