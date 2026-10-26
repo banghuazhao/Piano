@@ -66,7 +66,8 @@ final class MetronomeService {
     }
 
     func start(bpm requestedBPM: Int) {
-        _ = startAligned(bpm: requestedBPM, numerator: beatsPerBar, denominator: 4, scheduled: false)
+        _ = startAligned(bpm: requestedBPM, numerator: beatsPerBar,
+                         denominator: beatUnit, scheduled: false)
     }
 
     /// Audio and scoring share the scheduled first click, including the count-in.
@@ -92,7 +93,13 @@ final class MetronomeService {
             player.stop()
             if connectedSampleRate != sampleRate {
                 audioEngine.stop()
-                audioEngine.connect(player, to: audioEngine.mainMixerNode, format: buffer.format)
+                if #available(iOS 27.0, *) {
+                    try audioEngine.connectNode(
+                        player, to: audioEngine.mainMixerNode, format: buffer.format
+                    )
+                } else {
+                    audioEngine.connect(player, to: audioEngine.mainMixerNode, format: buffer.format)
+                }
                 connectedSampleRate = sampleRate
             }
             if !audioEngine.isRunning {

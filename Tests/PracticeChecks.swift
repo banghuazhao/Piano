@@ -292,6 +292,12 @@ struct PracticeChecks {
         uptime = 500
         rhythm.tick()
         expect(rhythm.missedNoteCount == 0, "No misses should accrue during a long interruption")
+        rhythm.onRhythmStart = { _, _, _ in nil }
+        rhythm.resume()
+        expect(rhythm.isPaused && rhythm.correctNoteCount == 1
+               && rhythm.currentBeat > 1.2,
+               "A failed click restart should preserve the paused score before bar replay")
+        rhythm.onRhythmStart = { _, _, _ in uptime }
         rhythm.resume()
         expect(rhythm.isCountingIn && rhythm.currentBeat == 0,
                "Resuming mid-bar should replay from the bar line after a fresh count-in")

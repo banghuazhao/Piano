@@ -127,6 +127,7 @@ struct PremiumView: View {
                     Task { await store.loadProduct() }
                 }
                 .buttonStyle(.bordered)
+                .frame(minHeight: 44)
             }
             .frame(maxWidth: .infinity)
         }

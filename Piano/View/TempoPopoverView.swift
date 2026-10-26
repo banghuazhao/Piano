@@ -16,14 +16,7 @@ struct TempoPopoverView: View {
         }
         .frame(width: 300)
         .frame(maxHeight: verticalSizeClass == .compact ? 260 : 420)
-        .background {
-            RoundedRectangle(cornerRadius: 18)
-                .fill(PianoTheme.panel)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 18)
-                        .strokeBorder(PianoTheme.brass.opacity(0.25), lineWidth: 1)
-                }
-        }
+        .pianoPopoverSurface()
         .environment(\.colorScheme, .dark)
         .presentationCompactAdaptation(.sheet)
     }
@@ -159,11 +152,7 @@ struct TempoPopoverView: View {
             .font(.headline)
             .foregroundStyle(PianoTheme.brass)
             .frame(width: 44, height: 44)
-            .background(PianoTheme.panelRaised, in: RoundedRectangle(cornerRadius: 11))
-            .overlay {
-                RoundedRectangle(cornerRadius: 11)
-                    .strokeBorder(PianoTheme.brass.opacity(0.18), lineWidth: 1)
-            }
+            .pianoControlSurface(cornerRadius: 11, interactive: true)
             .buttonStyle(.plain)
     }
 }

@@ -65,6 +65,7 @@ enum MIDIFileImporter {
 
         var parsedTracks: [ParsedTrack] = []
         var globalEvents = 0
+        var playableNoteOns = 0
         var chunkCount = 0
         while parsedTracks.count < sourceTrackCount {
             chunkCount += 1
@@ -80,7 +81,8 @@ enum MIDIFileImporter {
             if identifier == "MTrk" {
                 let parsed = try parseTrack(reader: &reader, end: chunkEnd,
                                             sourceIndex: parsedTracks.count,
-                                            ppqn: division, eventCount: &globalEvents)
+                                            ppqn: division, eventCount: &globalEvents,
+                                            playableNoteOns: &playableNoteOns)
                 parsedTracks.append(parsed)
             }
             reader.offset = chunkEnd
@@ -199,7 +201,8 @@ enum MIDIFileImporter {
     }
 
     private static func parseTrack(reader: inout Reader, end: Int, sourceIndex: Int,
-                                   ppqn: Int, eventCount: inout Int) throws -> ParsedTrack {
+                                   ppqn: Int, eventCount: inout Int,
+                                   playableNoteOns: inout Int) throws -> ParsedTrack {
         var parsed = ParsedTrack(sourceIndex: sourceIndex)
         var runningStatus: UInt8?
         var tick = 0
@@ -298,6 +301,10 @@ enum MIDIFileImporter {
                 } else if !(21...108).contains(first) {
                     parsed.skippedOutOfRange += 1
                 } else {
+                    playableNoteOns += 1
+                    guard playableNoteOns <= maximumNotes else {
+                        throw MIDIImportError.tooComplex("at most \(maximumNotes) piano notes are supported")
+                    }
                     let key = NoteKey(channel: channel, pitch: first)
                     active[key, default: []].append(PendingNote(tick: tick, velocity: second))
                 }

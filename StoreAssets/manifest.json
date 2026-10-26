@@ -1,0 +1,103 @@
+{
+  "outputDirectory": "en-US",
+  "previewFile": "preview.jpg",
+  "assets": [
+    {
+      "name": "01-play-a-real-piano",
+      "subdirectory": "iPhone",
+      "style": "landscape",
+      "width": 2622,
+      "height": 1206,
+      "screenshot": "Sources/iphone-instrument.png",
+      "headline": "Make every note yours.",
+      "subhead": "An expressive piano, wherever you are.",
+      "footer": "PLAY  ·  RECORD  ·  PRACTICE"
+    },
+    {
+      "name": "01-play-on-duo",
+      "subdirectory": "iPhone-Duo-Inner",
+      "style": "landscape",
+      "width": 2853,
+      "height": 2007,
+      "screenshot": "Sources/duo-inner-instrument.png",
+      "headline": "Play on a larger stage.",
+      "subhead": "A responsive piano across every key.",
+      "footer": "EXPRESSIVE SOUND"
+    },
+    {
+      "name": "02-guided-practice",
+      "subdirectory": "iPhone-Duo-Inner",
+      "style": "landscape",
+      "width": 2853,
+      "height": 2007,
+      "screenshot": "Sources/duo-inner-practice.png",
+      "headline": "Follow the music.",
+      "subhead": "Read the score. Play at your pace.",
+      "footer": "GUIDED PRACTICE"
+    },
+    {
+      "name": "03-music-stand",
+      "subdirectory": "iPhone-Duo-Inner",
+      "style": "portrait",
+      "width": 2007,
+      "height": 2853,
+      "screenshot": "Sources/duo-inner-portrait.png",
+      "headline": "Room for your music.",
+      "subhead": "Open up a piano that adapts to you."
+    },
+    {
+      "name": "01-play-on-duo",
+      "subdirectory": "iPhone-Duo-Outer",
+      "style": "duo",
+      "width": 2034,
+      "height": 1398,
+      "screenshot": "Sources/duo-outer-instrument.png",
+      "headline": "Your piano goes with you.",
+      "subhead": "Play, sustain, and record every idea."
+    },
+    {
+      "name": "02-guided-practice",
+      "subdirectory": "iPhone-Duo-Outer",
+      "style": "duo",
+      "width": 2034,
+      "height": 1398,
+      "screenshot": "Sources/duo-outer-practice.png",
+      "headline": "Learn one note at a time.",
+      "subhead": "Follow the score and feel your progress."
+    },
+    {
+      "name": "01-your-everyday-piano",
+      "subdirectory": "iPad-13",
+      "style": "portrait",
+      "width": 2064,
+      "height": 2752,
+      "screenshot": "Sources/ipad-instrument.png",
+      "headline": "Your everyday piano.",
+      "subhead": "A music stand, a keyboard, a place to play."
+    },
+    {
+      "name": "piano-header",
+      "subdirectory": "Creatives",
+      "style": "creative",
+      "width": 3840,
+      "height": 1646,
+      "screenshot": "Sources/iphone-instrument.png"
+    },
+    {
+      "name": "piano-search-results",
+      "subdirectory": "Creatives",
+      "style": "creative",
+      "width": 3840,
+      "height": 2560,
+      "screenshot": "Sources/iphone-instrument.png"
+    },
+    {
+      "name": "piano-universal",
+      "subdirectory": "Creatives",
+      "style": "creative",
+      "width": 5244,
+      "height": 2950,
+      "screenshot": "Sources/iphone-instrument.png"
+    }
+  ]
+}

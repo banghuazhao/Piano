@@ -43,7 +43,7 @@ struct PianoKey: Identifiable, Hashable {
     }
     
     func nextBlackKey() -> PianoKey? {
-        guard !isBlack else { return nil }
+        guard !isBlack, midiNote < 108 else { return nil }
         let blackKeyNotes: [PianoNote: PianoNote] = [
             .C: .CSharp,
             .D: .DSharp,

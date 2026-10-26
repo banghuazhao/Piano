@@ -36,11 +36,33 @@ struct ScoreNotationChecks {
             ]
         )
         let index = ScoreNotation.Index(exercise: exercise)
+        let sameScore = PracticeExercise(
+            id: exercise.id, title: exercise.title, detail: exercise.detail,
+            category: exercise.category, difficulty: exercise.difficulty,
+            suggestedBPM: exercise.suggestedBPM, beatsPerBar: exercise.beatsPerBar,
+            beatUnit: exercise.beatUnit, score: exercise.score
+        )
+        expect(sameScore == exercise && sameScore.renderID != exercise.renderID,
+               "Equivalent score values should retain equality but trigger a fresh render task")
+        expect(exercise.selecting(hand: .both)?.renderID == exercise.renderID,
+               "Retaining the same score should not rebuild its engraving index")
         let both = index.window(currentBeat: 0, hand: .both, width: 800, isCompact: false)
         expect(both.staves.count == 2, "Both-hand score should include treble and bass")
         let right = index.window(currentBeat: 0, hand: .right, width: 800, isCompact: false)
         expect(right.staves == [.treble] && right.chords.allSatisfy { $0.hand == .right },
                "Right-hand score should only include treble notes")
+        let stillStart = index.window(currentBeat: 0.2, hand: .right, width: 800,
+                                      isCompact: false, reducedMotion: true)
+        let stillLater = index.window(currentBeat: 2.2, hand: .right, width: 800,
+                                      isCompact: false, reducedMotion: true)
+        expect(stillStart.startBeat == stillLater.startBeat && stillStart.endBeat == stillLater.endBeat,
+               "Reduced-motion engraving should hold its viewport steady within a bar")
+        expect(stillStart.currentNoteNames != stillLater.currentNoteNames,
+               "Reduced-motion note announcements should follow the real playing position")
+        let invalidWidth = index.window(currentBeat: 0, hand: .right,
+                                        width: .nan, isCompact: false)
+        expect(invalidWidth.visibleBeats.isFinite && invalidWidth.visibleBeats > 0,
+               "A transient invalid layout width must not produce non-finite score geometry")
         let accidentals = right.chords.flatMap { $0.heads.map(\.displayedAccidental) }
         expect(accidentals.prefix(3).elementsEqual([.sharp, nil, .natural]),
                "Sharp should appear once in a bar, followed by a natural sign")
@@ -87,6 +109,13 @@ struct ScoreNotationChecks {
         expect(denseWindow.isDense, "Dense score should disclose omitted glyphs")
         expect(denseWindow.chords.reduce(0) { $0 + $1.heads.count } <= 96,
                "Dense score should cap noteheads for readability")
+        var cancellationProbes = 0
+        _ = ScoreNotation.Index(exercise: denseExercise) {
+            cancellationProbes += 1
+            return cancellationProbes > 1
+        }
+        expect(cancellationProbes >= 2,
+               "Index preparation should check cancellation during a long score build")
 
         print("Score notation checks passed: pitch, clefs, accidentals, tied bars, 6/8, rests, quantization, long holds, density")
     }

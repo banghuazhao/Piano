@@ -18,7 +18,7 @@ struct ImportedSongDetailView: View {
     var body: some View {
         ScrollView {
             if let song {
-                VStack(alignment: .leading, spacing: 22) {
+                LazyVStack(alignment: .leading, spacing: 22) {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(song.title).font(.largeTitle.bold()).foregroundStyle(PianoTheme.ivory)
                         Text(song.summary).foregroundStyle(PianoTheme.secondary)

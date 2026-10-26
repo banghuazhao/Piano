@@ -18,7 +18,9 @@ final class PerformanceStudio {
     @ObservationIgnored private var playbackNoteOff: ((UInt8) -> Void)?
     @ObservationIgnored private var playbackSustain: ((Bool) -> Void)?
     @ObservationIgnored private var playbackGeneration = UUID()
+    @ObservationIgnored private var playbackLease: PlaybackLease?
     @ObservationIgnored private let libraryURL: URL
+    @ObservationIgnored private var persistenceBlocked = false
 
     init(libraryURL: URL? = nil) {
         self.libraryURL = libraryURL ?? FileManager.default.urls(
@@ -28,6 +30,10 @@ final class PerformanceStudio {
             .appendingPathComponent("PianoFlow", isDirectory: true)
             .appendingPathComponent("performances.json")
         loadTakes()
+    }
+
+    deinit {
+        playbackTask?.cancel()
     }
 
     func beginRecording(
@@ -143,33 +149,51 @@ final class PerformanceStudio {
             return
         }
         let generation = UUID()
+        let lease = PlaybackLease()
         playbackGeneration = generation
+        playbackLease = lease
         playingTakeID = take.id
         playbackNoteOff = noteOff
         playbackSustain = sustain
         playbackTask = Task { [weak self] in
-            guard let self else { return }
+            var locallyHeldNotes: Set<UInt8> = []
+            defer {
+                // A Studio can disappear while a looping playback is asleep.
+                // The task retains its callbacks and releases any sounding notes.
+                if !lease.wasReleased {
+                    for note in locallyHeldNotes { noteOff(note) }
+                    sustain(false)
+                }
+            }
             repeat {
                 let startedAt = ProcessInfo.processInfo.systemUptime
                 for event in playbackTake.events {
-                    guard await self.waitUntil(event.time / options.rate, startedAt: startedAt),
+                    guard await Self.waitUntil(event.time / options.rate, startedAt: startedAt),
+                          let self,
                           self.playbackGeneration == generation else { return }
                     if let isSustained = event.sustain {
                         sustain(isSustained)
                     } else if event.isNoteOn {
+                        locallyHeldNotes.insert(event.note)
                         self.playbackHeldNotes.insert(event.note)
                         noteOn(event.note, event.velocity)
                     } else {
+                        locallyHeldNotes.remove(event.note)
                         self.playbackHeldNotes.remove(event.note)
                         noteOff(event.note)
                     }
                 }
                 let cycleDuration = max(playbackTake.duration / options.rate, options.loop ? 0.05 : 0)
-                guard await self.waitUntil(cycleDuration, startedAt: startedAt),
+                guard await Self.waitUntil(cycleDuration, startedAt: startedAt),
+                      let self,
                       self.playbackGeneration == generation else { return }
                 self.releasePlaybackNotes(clearCallback: false)
+                locallyHeldNotes.removeAll()
                 sustain(false)
             } while options.loop
+            guard let self, self.playbackGeneration == generation else { return }
+            lease.wasReleased = true
+            self.playbackLease = nil
             self.playbackNoteOff = nil
             self.playbackSustain = nil
             self.playingTakeID = nil
@@ -177,7 +201,7 @@ final class PerformanceStudio {
         }
     }
 
-    private func waitUntil(_ time: TimeInterval, startedAt: TimeInterval) async -> Bool {
+    private static func waitUntil(_ time: TimeInterval, startedAt: TimeInterval) async -> Bool {
         let elapsed = ProcessInfo.processInfo.systemUptime - startedAt
         let remaining = max(0, time - elapsed)
         if remaining > 0 {
@@ -196,6 +220,8 @@ final class PerformanceStudio {
         playbackTask = nil
         releasePlaybackNotes()
         playbackSustain?(false)
+        playbackLease?.wasReleased = true
+        playbackLease = nil
         playbackSustain = nil
         playingTakeID = nil
     }
@@ -300,15 +326,43 @@ final class PerformanceStudio {
             let decoded = try JSONDecoder().decode([PerformanceTake].self, from: Data(contentsOf: libraryURL))
             takes = decoded.filter(\.isValid)
             if takes.count != decoded.count {
-                lastError = "Some saved performances could not be loaded."
+                if preserveDamagedLibrary(moveOriginal: false) {
+                    lastError = "Some saved performances were invalid. A backup was kept before the library changes."
+                }
             }
         } catch {
-            lastError = "Saved performances could not be loaded."
+            if preserveDamagedLibrary(moveOriginal: true) {
+                lastError = "Saved performances could not be loaded. The original library was kept as a backup."
+            }
+        }
+    }
+
+    /// Never overwrite records that failed decoding or validation before a
+    /// recovery copy exists. A failed backup leaves the library read-only.
+    private func preserveDamagedLibrary(moveOriginal: Bool) -> Bool {
+        let backup = libraryURL.deletingLastPathComponent().appendingPathComponent(
+            "performances.recovery-\(UUID().uuidString).json"
+        )
+        do {
+            if moveOriginal {
+                try FileManager.default.moveItem(at: libraryURL, to: backup)
+            } else {
+                try FileManager.default.copyItem(at: libraryURL, to: backup)
+            }
+            return true
+        } catch {
+            persistenceBlocked = true
+            lastError = "Saved performances could not be backed up. Recording changes are disabled to protect them."
+            return false
         }
     }
 
     @discardableResult
     private func persistTakes(_ updatedTakes: [PerformanceTake]) -> Bool {
+        guard !persistenceBlocked else {
+            lastError = "Recording changes are disabled until the saved library can be backed up."
+            return false
+        }
         do {
             try FileManager.default.createDirectory(
                 at: libraryURL.deletingLastPathComponent(),
@@ -321,4 +375,9 @@ final class PerformanceStudio {
             return false
         }
     }
+}
+
+@MainActor
+private final class PlaybackLease {
+    var wasReleased = false
 }

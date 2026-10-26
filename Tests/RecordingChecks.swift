@@ -98,6 +98,22 @@ struct RecordingChecks {
         expect(failingStudio.finishRecording() == nil && failingStudio.takes.isEmpty,
                "Failed write must not display an unsaved take")
 
+        let damagedURL = directory.appendingPathComponent("damaged.json")
+        let originalBytes = Data("not valid JSON".utf8)
+        try originalBytes.write(to: damagedURL)
+        let recoveringStudio = PerformanceStudio(libraryURL: damagedURL)
+        expect(recoveringStudio.takes.isEmpty && recoveringStudio.lastError != nil,
+               "Damaged library must load safely")
+        recoveringStudio.beginRecording(heldNotes: [65])
+        expect(recoveringStudio.finishRecording() != nil,
+               "New recordings should save after a successful recovery backup")
+        let backupURLs = try FileManager.default.contentsOfDirectory(
+            at: directory, includingPropertiesForKeys: nil
+        ).filter { $0.lastPathComponent.hasPrefix("performances.recovery-") }
+        let preservedBytes = try backupURLs.contains { try Data(contentsOf: $0) == originalBytes }
+        expect(preservedBytes,
+               "Corrupt library bytes must survive a subsequent recording")
+
         let timed = PerformanceTake(
             id: UUID(), createdAt: Date(), duration: 0.4,
             events: [
@@ -128,6 +144,30 @@ struct RecordingChecks {
         try await Task.sleep(nanoseconds: 340_000_000)
         studio.stopPlayback()
         expect(loopCount >= 2 && studio.playingTakeID == nil, "Loop must repeat and stop")
+
+        let heldLoop = PerformanceTake(
+            id: UUID(), createdAt: Date(), duration: 1,
+            events: [
+                PerformanceEvent(note: 67, time: 0, isNoteOn: true),
+                PerformanceEvent(note: 67, time: 0.9, isNoteOn: false)
+            ]
+        )
+        var transientStudio: PerformanceStudio? = PerformanceStudio(
+            libraryURL: directory.appendingPathComponent("transient.json")
+        )
+        weak let weakStudio = transientStudio
+        var transientOnsets = 0
+        var transientReleases = 0
+        transientStudio?.play(heldLoop, options: PerformancePlaybackOptions(loop: true),
+                              noteOn: { _, _ in transientOnsets += 1 },
+                              noteOff: { _ in transientReleases += 1 },
+                              sustain: { _ in })
+        try await Task.sleep(nanoseconds: 60_000_000)
+        expect(transientOnsets == 1, "Transient playback should start before teardown")
+        transientStudio = nil
+        try await Task.sleep(nanoseconds: 60_000_000)
+        expect(weakStudio == nil && transientReleases == 1,
+               "A looping Studio must deallocate and release its held notes")
         print("Recording checks passed")
     }
 

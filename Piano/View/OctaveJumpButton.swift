@@ -10,15 +10,13 @@ struct OctaveJumpButton: View {
             Text("C\(octave)")
                 .font(.system(.caption, design: .rounded, weight: .semibold))
                 .monospacedDigit()
-                .foregroundStyle(isSelected ? PianoTheme.background : PianoTheme.ivory)
+                .foregroundStyle(PianoTheme.ivory)
                 .frame(minWidth: 44, minHeight: 44)
-                .background {
-                    RoundedRectangle(cornerRadius: 9)
-                        .fill(isSelected ? PianoTheme.brass : PianoTheme.panelRaised)
-                }
-                .overlay {
-                    RoundedRectangle(cornerRadius: 9)
-                        .strokeBorder(isSelected ? PianoTheme.brass : PianoTheme.divider, lineWidth: 1)
+                .pianoControlSurface(cornerRadius: 9, tint: isSelected ? PianoTheme.brass : nil, interactive: true)
+                .overlay(alignment: .bottom) {
+                    if isSelected {
+                        Capsule().fill(PianoTheme.ivory).frame(width: 16, height: 2).padding(.bottom, 5)
+                    }
                 }
         }
         .buttonStyle(.plain)

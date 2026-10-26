@@ -228,7 +228,7 @@ enum ScoreNotation {
         let totalBeats: Double
         let rhythmSimplified: Bool
 
-        init(exercise: PracticeExercise) {
+        init(exercise: PracticeExercise, shouldCancel: () -> Bool = { false }) {
             beatsPerBar = exercise.beatsPerBar
             beatUnit = exercise.beatUnit
             barLength = Double(exercise.beatsPerBar) * 4 / Double(exercise.beatUnit)
@@ -236,7 +236,10 @@ enum ScoreNotation {
             var lastEnd = 0.0
             var foundLeft = false
             var foundRight = false
-            notes = exercise.score.map { note in
+            var preparedNotes: [Note] = []
+            preparedNotes.reserveCapacity(exercise.score.count)
+            for (offset, note) in exercise.score.enumerated() {
+                if offset.isMultiple(of: 256), shouldCancel() { break }
                 let start = ScoreNotation.quantizeToSixteenth(note.startBeat)
                 let duration = max(sixteenthBeat, ScoreNotation.quantizeToSixteenth(note.durationBeats))
                 if abs(start - note.startBeat) > 0.000_001
@@ -245,8 +248,9 @@ enum ScoreNotation {
                 }
                 lastEnd = max(lastEnd, start + duration)
                 if note.hand == .left { foundLeft = true } else { foundRight = true }
-                return Note(original: note, start: start, end: start + duration)
+                preparedNotes.append(Note(original: note, start: start, end: start + duration))
             }
+            notes = preparedNotes
             rhythmSimplified = simplified
             totalBeats = lastEnd
             hasLeft = foundLeft
@@ -255,16 +259,21 @@ enum ScoreNotation {
             var maxima: [Double] = []
             maxima.reserveCapacity((notes.count + 127) / 128)
             for offset in stride(from: 0, to: notes.count, by: 128) {
+                if shouldCancel() { break }
                 maxima.append(notes[offset..<min(offset + 128, notes.count)].map(\.end).max() ?? 0)
             }
             blockMaxEnds = maxima
         }
 
-        func window(currentBeat: Double, hand: PracticeHand, width: Double, isCompact: Bool) -> ScoreWindow {
+        func window(currentBeat: Double, hand: PracticeHand, width: Double,
+                    isCompact: Bool, reducedMotion: Bool = false) -> ScoreWindow {
             let safeBeat = currentBeat.isFinite
                 ? min(1_000_000, max(0, currentBeat)) : 0
-            let span = visibleSpan(around: safeBeat, hand: hand, width: width, isCompact: isCompact)
-            let start = max(0, safeBeat - min(barLength * 0.4, span * 0.28))
+            let layoutBeat = reducedMotion ? floor(safeBeat / barLength) * barLength : safeBeat
+            let safeWidth = width.isFinite ? max(0, width) : 0
+            let span = visibleSpan(around: layoutBeat, hand: hand,
+                                   width: safeWidth, isCompact: isCompact)
+            let start = max(0, layoutBeat - min(barLength * 0.4, span * 0.28))
             let end = start + span
             let staves: [ScoreClef]
             switch hand {

@@ -111,6 +111,10 @@ struct MIDIImportChecks {
         expectFailure(midi(format: 0, tracks: [statusAfterMeta]), containing: "running status")
         expectFailure(Data(count: MIDIFileImporter.maximumFileBytes + 1), containing: "8 MB")
 
+        let danglingFlood = Array(repeating: event(0, [0x90, 60, 80]), count: 40_001)
+            .flatMap { $0 }
+        expectFailure(midi(format: 0, tracks: [danglingFlood]), containing: "40000 piano notes")
+
         let dangling = midi(format: 0, tracks: [
             event(0, [0x90, 60, 80]) + event(240, [0xFF, 0x2F, 0])
         ])
@@ -187,6 +191,18 @@ struct MIDIImportChecks {
                "Corrupt stored data should be retained as a backup")
         _ = try recovered.importData(data, title: "Reimport")
         expect(recovered.songs.count == 1, "Import should work after recoverable corruption")
+
+        var invalidLibraryJSON = try JSONSerialization.jsonObject(
+            with: JSONEncoder().encode([duet])) as! [[String: Any]]
+        var invalidTracks = invalidLibraryJSON[0]["tracks"] as! [[String: Any]]
+        var invalidNotes = invalidTracks[0]["notes"] as! [[String: Any]]
+        invalidNotes[0]["pitch"] = 0
+        invalidTracks[0]["notes"] = invalidNotes
+        invalidLibraryJSON[0]["tracks"] = invalidTracks
+        try JSONSerialization.data(withJSONObject: invalidLibraryJSON).write(to: storage)
+        let structurallyCorrupt = ImportedSongLibrary(storageURL: storage)
+        expect(structurallyCorrupt.songs.isEmpty && structurallyCorrupt.loadWarning != nil,
+               "Valid JSON with invalid piano notes must be quarantined before score creation")
     }
 
     private static func expectFailure(_ data: Data, containing fragment: String) {

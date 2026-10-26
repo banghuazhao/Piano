@@ -24,6 +24,7 @@ class PianoViewModel {
     private var midiNotes: Set<UInt8> = []
     private var midiVelocities: [UInt8: UInt8] = [:]
     var onAudioReset: (() -> Void)?
+    var hasTouchNotes: Bool { !pressedKeys.isEmpty }
 
     private let audioEngine: AudioEngine
 
@@ -183,7 +184,7 @@ class PianoViewModel {
 
     /// Given a normalized position [0,1], return the nearest white key.
     func keyForPosition(_ position: Double) -> PianoKey? {
-        guard !whiteKeys.isEmpty else { return nil }
+        guard !whiteKeys.isEmpty, position.isFinite else { return nil }
         let clamped = max(0.0, min(1.0, position))
         let index = Int(round(clamped * Double(whiteKeys.count - 1)))
         return whiteKeys[index]

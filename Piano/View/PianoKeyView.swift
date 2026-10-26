@@ -8,6 +8,7 @@ struct PianoKeyView: View {
     let octaveNamesOnly: Bool
     let onPress: () -> Bool
     let onRelease: () -> Void
+    @State private var accessibilityReleaseTask: Task<Void, Never>?
 
     var body: some View {
         Group {
@@ -42,8 +43,25 @@ struct PianoKeyView: View {
         .accessibilityAddTraits(.isButton)
         .accessibilityAction {
             guard onPress() else { return }
-            Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 180_000_000)
+            accessibilityReleaseTask?.cancel()
+            accessibilityReleaseTask = Task { @MainActor in
+                do { try await Task.sleep(for: .milliseconds(180)) }
+                catch { return }
+                guard !Task.isCancelled else { return }
+                accessibilityReleaseTask = nil
+                onRelease()
+            }
+        }
+        .onChange(of: isPressed) { _, pressed in
+            if !pressed {
+                accessibilityReleaseTask?.cancel()
+                accessibilityReleaseTask = nil
+            }
+        }
+        .onDisappear {
+            if accessibilityReleaseTask != nil {
+                accessibilityReleaseTask?.cancel()
+                accessibilityReleaseTask = nil
                 onRelease()
             }
         }

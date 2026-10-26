@@ -15,6 +15,7 @@ struct PianoView: View {
     @State private var showTempo = false
     @State private var showPractice = false
     @State private var keyboardViewportWidth: CGFloat = 0
+    @State private var gestureKeyWidth: CGFloat?
 
     @AppStorage("keyWidth") private var keyWidth = 50.0
     @AppStorage("hapticsEnabled") private var hapticsEnabled = false
@@ -27,6 +28,7 @@ struct PianoView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
+        let resolvedKeyWidth = playingKeyWidth
         VStack(spacing: 0) {
                 PianoToolbar(
                     chordName: ChordDetector.name(for: viewModel.pressedMIDINotes),
@@ -107,7 +109,7 @@ struct PianoView: View {
                                 onLibrary: { showLibrary = true }
                             )
                         }
-                        keyboard(height: keyboardHeight)
+                        keyboard(height: keyboardHeight, keyWidth: resolvedKeyWidth)
                             .frame(height: keyboardHeight)
                     }
                     .onAppear { keyboardViewportWidth = keyArea.size.width }
@@ -170,9 +172,15 @@ struct PianoView: View {
         .onChange(of: showPractice) { _, shown in if shown { practice.pause() } }
         .onChange(of: showLibrary) { _, shown in if shown { practice.pause() } }
         .onChange(of: keyboardViewportWidth) { _, _ in revealPracticeNotes() }
+        .onChange(of: viewModel.hasTouchNotes) { _, held in
+            if !held {
+                gestureKeyWidth = nil
+                revealPracticeNotes()
+            }
+        }
     }
 
-    private func keyboard(height: CGFloat) -> some View {
+    private func keyboard(height: CGFloat, keyWidth: CGFloat) -> some View {
         ScrollViewReader { proxy in
             ScrollView(.horizontal) {
                 ZStack(alignment: .topLeading) {
@@ -187,7 +195,7 @@ struct PianoView: View {
                                 onPress: { press(key) },
                                 onRelease: { release(key) }
                             )
-                            .frame(width: playingKeyWidth, height: height)
+                            .frame(width: keyWidth, height: height)
                             .id(key.id)
                         }
                     }
@@ -195,7 +203,7 @@ struct PianoView: View {
                     HStack(spacing: 1) {
                         ForEach(viewModel.whiteKeys) { key in
                             Color.clear
-                                .frame(width: playingKeyWidth, height: height)
+                                .frame(width: keyWidth, height: height)
                                 .overlay(alignment: .topTrailing) {
                                     if let blackKey = key.nextBlackKey() {
                                         PianoKeyView(
@@ -207,18 +215,18 @@ struct PianoView: View {
                                             onPress: { press(blackKey) },
                                             onRelease: { release(blackKey) }
                                         )
-                                        .frame(width: playingKeyWidth * 0.62, height: height * 0.62)
-                                        .offset(x: playingKeyWidth * 0.31)
+                                        .frame(width: keyWidth * 0.62, height: height * 0.62)
+                                        .offset(x: keyWidth * 0.31)
                                     }
                                 }
                         }
                     }
                 }
-                .frame(width: totalKeyboardWidth, height: height)
+                .frame(width: CGFloat(viewModel.whiteKeys.count) * (keyWidth + 1) - 1, height: height)
                 .overlay {
                     KeyboardTouchSurface(
                         whiteKeys: viewModel.whiteKeys,
-                        keyWidth: playingKeyWidth,
+                        keyWidth: keyWidth,
                         onPress: { _ = press($0) },
                         onRelease: release
                     )
@@ -228,35 +236,35 @@ struct PianoView: View {
             .scrollDisabled(true)
             .clipped()
             .background(PianoTheme.background)
-            .onAppear {
+            .task {
                 scrollAction = proxy.scrollTo
-                Task { @MainActor in
-                    await Task.yield()
-                    if let middleKey = viewModel.middleAnchorKey() {
-                        proxy.scrollTo(middleKey.id, anchor: .center)
-                        navigatorPosition = viewModel.normalizedPosition(for: middleKey) ?? 0.5
-                    }
+                await Task.yield()
+                guard !Task.isCancelled else { return }
+                if practice.exercise != nil {
+                    revealPracticeNotes(force: true)
+                } else if let middleKey = viewModel.middleAnchorKey() {
+                    proxy.scrollTo(middleKey.id, anchor: .center)
+                    navigatorPosition = viewModel.normalizedPosition(for: middleKey) ?? 0.5
                 }
             }
         }
     }
 
-    private var totalKeyboardWidth: CGFloat {
-        let count = viewModel.whiteKeys.count
-        return CGFloat(count) * playingKeyWidth + CGFloat(max(0, count - 1))
-    }
-
     /// Fit the measure, including sustained bass notes, so each new melody note
     /// does not resize the keyboard underneath a held finger.
     private var playingKeyWidth: CGFloat {
-        guard practiceDisplayNotes.count > 1, keyboardViewportWidth > 0,
-              let range = practiceKeyRange else { return keyWidth }
+        if let gestureKeyWidth { return gestureKeyWidth }
+        let notes = practiceDisplayNotes
+        guard notes.count > 1, keyboardViewportWidth > 0,
+              let range = practiceKeyRange(for: notes) else { return safeKeyWidth }
         let keysToFit = CGFloat(range.upperBound - range.lowerBound + 4)
-        return max(30, min(keyWidth, keyboardViewportWidth / keysToFit - 1))
+        return max(30, min(safeKeyWidth, keyboardViewportWidth / keysToFit - 1))
     }
 
-    private var practiceKeyRange: ClosedRange<Int>? {
-        let indices = practiceDisplayNotes.compactMap { note in
+    private var safeKeyWidth: CGFloat { keyWidth.isFinite ? min(90, max(30, keyWidth)) : 50 }
+
+    private func practiceKeyRange(for notes: Set<UInt8>) -> ClosedRange<Int>? {
+        let indices = notes.compactMap { note in
             viewModel.whiteKeys.lastIndex(where: { $0.midiNote <= note })
         }
         guard let first = indices.min(), let last = indices.max() else { return nil }
@@ -275,8 +283,10 @@ struct PianoView: View {
 
     @discardableResult
     private func press(_ key: PianoKey) -> Bool {
+        let currentKeyWidth = playingKeyWidth
         let wasHeld = viewModel.pressedMIDINotes.contains(key.midiNote)
         guard viewModel.keyPressed(key) else { return false }
+        gestureKeyWidth = currentKeyWidth
         PianoSessionActivity.markPlayed()
         if !wasHeld { studio.capture(note: key.midiNote, isNoteOn: true) }
         practice.noteOn(key.midiNote, heldNotes: Set(viewModel.pressedMIDINotes))
@@ -396,7 +406,8 @@ struct PianoView: View {
     }
 
     private func revealPracticeNotes(force: Bool = false) {
-        guard let range = practiceKeyRange else { return }
+        guard !viewModel.hasTouchNotes,
+              let range = practiceKeyRange(for: practiceDisplayNotes) else { return }
         let denominator = Double(viewModel.whiteKeys.count - 1)
         let center = Double(range.lowerBound + range.upperBound) / 2
         let halfVisible = max(0, keyboardViewportWidth / (playingKeyWidth + 1) / 2 - 1.5)

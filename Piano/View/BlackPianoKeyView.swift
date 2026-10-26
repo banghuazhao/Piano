@@ -9,7 +9,7 @@ struct BlackPianoKeyView: View {
     @ScaledMetric(relativeTo: .caption2) private var labelSize: CGFloat = 10
 
     var body: some View {
-        GeometryReader { _ in
+        GeometryReader { geometry in
             RoundedRectangle(cornerRadius: 4)
                 .fill(
                     LinearGradient(
@@ -48,7 +48,8 @@ struct BlackPianoKeyView: View {
                 .overlay(alignment: .bottom) {
                     if showLabels && !octaveNamesOnly {
                         Text(key.displayName)
-                            .font(.system(size: labelSize, weight: .medium, design: .rounded))
+                            .font(.system(size: min(labelSize, max(8, geometry.size.width / 2.5)),
+                                          weight: .medium, design: .rounded))
                             .foregroundStyle(PianoTheme.ivory.opacity(0.87))
                             .lineLimit(1)
                             .minimumScaleFactor(0.65)

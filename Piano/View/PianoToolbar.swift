@@ -23,17 +23,19 @@ struct PianoToolbar: View {
     let onMetronome: () -> Void
     let onTempo: () -> Void
     let onSettings: () -> Void
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
-        ViewThatFits(in: .horizontal) {
+        GeometryReader { geometry in
+          Group {
+            if geometry.size.width >= 1080 && !dynamicTypeSize.isAccessibilitySize {
             HStack(spacing: 12) {
                 identity
                 chordDisplay
                 Spacer(minLength: 8)
                 controls(compact: false)
             }
-            .fixedSize(horizontal: true, vertical: false)
-
+            } else if geometry.size.width >= 720 && !dynamicTypeSize.isAccessibilitySize {
             HStack(spacing: 8) {
                 compactIdentity
                 Text(chordName == "READY TO PLAY" ? "LIVE" : chordName)
@@ -45,8 +47,7 @@ struct PianoToolbar: View {
                     .accessibilityLabel(chordName)
                 controls(compact: true)
             }
-            .fixedSize(horizontal: true, vertical: false)
-
+            } else {
             HStack(spacing: 8) {
                 compactIdentity
 
@@ -82,10 +83,14 @@ struct PianoToolbar: View {
 
                 moreControls
             }
-        }
+            }
+          }
+        .pianoGlassContainer()
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(height: 60)
         .background {
             LinearGradient(
                 colors: [PianoTheme.panelRaised, PianoTheme.panel, PianoTheme.background],
@@ -146,7 +151,9 @@ struct PianoToolbar: View {
                 .font(.system(size: 19, weight: .semibold))
                 .foregroundStyle(PianoTheme.ivory)
                 .frame(width: 44, height: 44)
-                .background(controlBackground(isActive: sustainEnabled || metronomeRunning, activeColor: PianoTheme.brass))
+                .pianoControlSurface(cornerRadius: 10,
+                                     tint: sustainEnabled || metronomeRunning ? PianoTheme.brass : nil,
+                                     interactive: true)
                 .overlay(alignment: .topTrailing) {
                     if sustainEnabled || metronomeRunning {
                         Circle()
@@ -291,7 +298,7 @@ struct PianoToolbar: View {
             .foregroundStyle(isActive ? activeColor : PianoTheme.ivory)
             .frame(minWidth: compact ? 44 : 56, minHeight: 44)
             .frame(maxWidth: compact ? .infinity : nil)
-            .background(controlBackground(isActive: isActive, activeColor: activeColor))
+            .pianoControlSurface(cornerRadius: 10, tint: isActive ? activeColor : nil, interactive: true)
         }
         .buttonStyle(.plain)
         .disabled(!isEnabled)
@@ -313,23 +320,12 @@ struct PianoToolbar: View {
             .foregroundStyle(PianoTheme.brass)
             .frame(minWidth: compact ? 53 : 62, minHeight: 44)
             .frame(maxWidth: compact ? .infinity : nil)
-            .background(controlBackground(isActive: false, activeColor: PianoTheme.brass))
+            .pianoControlSurface(cornerRadius: 10, interactive: true)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Tempo settings, \(bpm) beats per minute")
     }
 
-    private func controlBackground(isActive: Bool, activeColor: Color) -> some View {
-        RoundedRectangle(cornerRadius: 10)
-            .fill(isActive ? activeColor.opacity(0.16) : PianoTheme.panelRaised)
-            .overlay {
-                RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(
-                        isActive ? activeColor.opacity(0.65) : PianoTheme.brass.opacity(0.14),
-                        lineWidth: 1
-                    )
-            }
-    }
 }
 
 #if DEBUG

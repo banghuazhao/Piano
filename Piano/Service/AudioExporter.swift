@@ -104,9 +104,9 @@ enum AudioExporter {
         engine.attach(sampler)
         engine.attach(equalizer)
         engine.attach(reverb)
-        engine.connect(sampler, to: equalizer, format: pcmFormat)
-        engine.connect(equalizer, to: reverb, format: pcmFormat)
-        engine.connect(reverb, to: engine.mainMixerNode, format: pcmFormat)
+        try connect(engine, from: sampler, to: equalizer, format: pcmFormat)
+        try connect(engine, from: equalizer, to: reverb, format: pcmFormat)
+        try connect(engine, from: reverb, to: engine.mainMixerNode, format: pcmFormat)
         try sampler.loadSoundBankInstrument(
             at: soundFontURL,
             program: 0,
@@ -135,6 +135,19 @@ enum AudioExporter {
         } catch {
             try? FileManager.default.removeItem(at: outputURL)
             throw error
+        }
+    }
+
+    private static func connect(
+        _ engine: AVAudioEngine,
+        from source: AVAudioNode,
+        to destination: AVAudioNode,
+        format: AVAudioFormat
+    ) throws {
+        if #available(iOS 27.0, macOS 27.0, *) {
+            try engine.connectNode(source, to: destination, format: format)
+        } else {
+            engine.connect(source, to: destination, format: format)
         }
     }
 

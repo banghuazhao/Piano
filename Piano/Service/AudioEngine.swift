@@ -124,7 +124,12 @@ final class AudioEngine {
         ) { [weak self] _ in
             // The engine posts this on an internal queue. Restart after that callback returns.
             Task { @MainActor [weak self] in
-                self?.startEngineIfNeeded()
+                guard let self else { return }
+                // A route change stops the engine's voices. Release the app's
+                // held-key state too, so the next press can sound immediately.
+                self.stopAllNotes()
+                self.onReset?()
+                self.startEngineIfNeeded()
             }
         }
     }

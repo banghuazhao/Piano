@@ -9,6 +9,7 @@ struct PracticeScoreView: View {
     let isCompact: Bool
 
     @State private var index: ScoreNotation.Index?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(exercise: PracticeExercise, currentBeat: Double,
          hand: PracticeHand = .both, isCompact: Bool = false) {
@@ -22,7 +23,8 @@ struct PracticeScoreView: View {
         GeometryReader { geometry in
             if let index {
                 let window = index.window(currentBeat: currentBeat, hand: hand,
-                                          width: Double(geometry.size.width), isCompact: isCompact)
+                                          width: Double(geometry.size.width),
+                                          isCompact: isCompact, reducedMotion: reduceMotion)
                 Canvas(opaque: false) { context, size in
                     drawScore(context: context, size: size, window: window, index: index)
                 }
@@ -44,13 +46,21 @@ struct PracticeScoreView: View {
                 .strokeBorder(Self.rule.opacity(0.35), lineWidth: 1)
         }
         .clipShape(RoundedRectangle(cornerRadius: isCompact ? 10 : 18))
-        .task(id: exercise) {
+        .task(id: exercise.renderID) {
             index = nil
             let snapshot = exercise
-            let prepared = await Task.detached(priority: .userInitiated) {
-                ScoreNotation.Index(exercise: snapshot)
-            }.value
-            guard !Task.isCancelled else { return }
+            let worker = Task.detached(priority: .userInitiated) { () -> ScoreNotation.Index? in
+                guard !Task.isCancelled else { return nil }
+                let prepared = ScoreNotation.Index(exercise: snapshot,
+                                                   shouldCancel: { Task.isCancelled })
+                return Task.isCancelled ? nil : prepared
+            }
+            let prepared = await withTaskCancellationHandler {
+                await worker.value
+            } onCancel: {
+                worker.cancel()
+            }
+            guard !Task.isCancelled, let prepared else { return }
             index = prepared
         }
     }

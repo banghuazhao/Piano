@@ -85,6 +85,8 @@ struct PracticeStep: Equatable, Sendable {
 
 struct PracticeExercise: Identifiable, Equatable, Sendable {
     let id: String
+    /// Cheap identity for work that must be rebuilt when a new score instance is created.
+    let renderID: UUID
     let title: String
     let detail: String
     let category: PracticeCategory
@@ -94,6 +96,14 @@ struct PracticeExercise: Identifiable, Equatable, Sendable {
     let suggestedBPM: Int
     let beatsPerBar: Int
     let beatUnit: Int
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.id == rhs.id && lhs.title == rhs.title && lhs.detail == rhs.detail
+            && lhs.category == rhs.category && lhs.difficulty == rhs.difficulty
+            && lhs.steps == rhs.steps && lhs.score == rhs.score
+            && lhs.suggestedBPM == rhs.suggestedBPM
+            && lhs.beatsPerBar == rhs.beatsPerBar && lhs.beatUnit == rhs.beatUnit
+    }
     let totalBeats: Double
     let availableHands: [PracticeHand]
 
@@ -138,6 +148,7 @@ struct PracticeExercise: Identifiable, Equatable, Sendable {
             && $0.durationBeats.isFinite && $0.durationBeats > 0 && $0.hand != .both
         }, "An exercise needs valid timed piano notes")
         self.id = id
+        self.renderID = UUID()
         self.title = title
         self.detail = detail
         self.category = category

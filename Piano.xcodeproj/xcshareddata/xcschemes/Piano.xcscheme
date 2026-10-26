@@ -27,19 +27,12 @@
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES">
-      <Testables>
-         <TestableReference skipped = "NO" parallelizable = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "A7F0B6F12F0A11EF8B00000A"
-               BuildableName = "PianoStoreKitTests.xctest"
-               BlueprintName = "PianoStoreKitTests"
-               ReferencedContainer = "container:Piano.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
-      </Testables>
-      <StoreKitConfigurationFileReference identifier = "../../../PianoFlow.storekit">
-      </StoreKitConfigurationFileReference>
+      <TestPlans>
+         <TestPlanReference
+            reference = "container:PianoStoreKit.xctestplan"
+            default = "YES">
+         </TestPlanReference>
+      </TestPlans>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"

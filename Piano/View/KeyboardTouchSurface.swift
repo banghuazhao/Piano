@@ -34,6 +34,15 @@ final class KeyboardTouchView: UIView {
 
     private var activeKeys: [ObjectIdentifier: PianoKey] = [:]
     private var keyTouchCounts: [PianoKey: Int] = [:]
+    private var previousSize: CGSize = .zero
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        if previousSize != bounds.size {
+            releaseAllTouches()
+            previousSize = bounds.size
+        }
+    }
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         updateTouches(touches)
@@ -94,10 +103,15 @@ final class KeyboardTouchView: UIView {
     override func didMoveToWindow() {
         super.didMoveToWindow()
         if window == nil {
-            for key in keyTouchCounts.keys { onRelease?(key) }
-            keyTouchCounts.removeAll()
-            activeKeys.removeAll()
+            releaseAllTouches()
         }
+    }
+
+    private func releaseAllTouches() {
+        let keys = Array(keyTouchCounts.keys)
+        keyTouchCounts.removeAll()
+        activeKeys.removeAll()
+        for key in keys { onRelease?(key) }
     }
 
     private func key(at point: CGPoint) -> PianoKey? {

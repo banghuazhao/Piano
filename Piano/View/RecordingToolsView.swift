@@ -116,11 +116,7 @@ struct RecordingToolsView: View {
         .onChange(of: PremiumStore.shared.isPremium) { _, isPremium in
             if !isPremium && soundProfile.isPremium { soundProfile = .concert }
         }
-        .onDisappear {
-            exportTask?.cancel()
-            exportTask = nil
-            isExporting = false
-        }
+        .onDisappear { invalidateExport() }
         .task { await PremiumStore.shared.prepare() }
     }
 

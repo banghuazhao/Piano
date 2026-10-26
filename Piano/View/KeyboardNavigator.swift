@@ -5,11 +5,13 @@ struct KeyboardNavigator: View {
     let octaves: [Int]
     let currentOctave: Int?
     let onOctave: (Int) -> Void
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         GeometryReader { geometry in
             HStack(spacing: 12) {
-                Text("RANGE")
+                if !dynamicTypeSize.isAccessibilitySize {
+                  Text("RANGE")
                     .font(.system(.caption2, design: .rounded, weight: .bold))
                     .tracking(1.6)
                     .foregroundStyle(PianoTheme.secondary)
@@ -17,17 +19,20 @@ struct KeyboardNavigator: View {
                 Text("A0")
                     .font(.system(.caption2, design: .rounded))
                     .foregroundStyle(PianoTheme.secondary)
+                }
 
                 Slider(value: $position, in: 0...1)
                     .tint(PianoTheme.brass)
                     .accessibilityLabel("Keyboard range")
                     .accessibilityValue("Octave \(currentOctave ?? 4)")
 
-                Text("C8")
+                if !dynamicTypeSize.isAccessibilitySize {
+                  Text("C8")
                     .font(.system(.caption2, design: .rounded))
                     .foregroundStyle(PianoTheme.secondary)
+                }
 
-                if geometry.size.width >= 650 {
+                if geometry.size.width >= 650 && !dynamicTypeSize.isAccessibilitySize {
                     HStack(spacing: 4) {
                         ForEach(octaves, id: \.self) { octave in
                             OctaveJumpButton(
@@ -47,11 +52,12 @@ struct KeyboardNavigator: View {
                             .font(.system(.caption, design: .rounded, weight: .semibold))
                             .foregroundStyle(PianoTheme.ivory)
                             .frame(minWidth: 72, minHeight: 44)
-                            .background(PianoTheme.panelRaised, in: RoundedRectangle(cornerRadius: 9))
+                            .pianoControlSurface(cornerRadius: 9, interactive: true)
                     }
                     .accessibilityLabel("Choose octave")
                 }
             }
+            .pianoGlassContainer()
             .padding(.horizontal, 16)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }

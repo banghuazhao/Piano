@@ -6,6 +6,24 @@ import XCTest
 /// StoreKit test sessions share one environment; keep this suite serial.
 final class PremiumStoreTests: XCTestCase {
     @MainActor
+    func testPrepareObservesTransactionsAfterEarlyEntitlementRefresh() async throws {
+        let session = try makeSession()
+        session.clearTransactions()
+        let store = PremiumStore()
+        await store.refreshEntitlements()
+        XCTAssertTrue(store.hasDeterminedEntitlement)
+        await store.prepare()
+
+        _ = try await session.buyProduct(identifier: PremiumStore.productID)
+        await waitForObservedEntitlement(true, in: store)
+        let transaction = try XCTUnwrap(session.allTransactions().first {
+            $0.productIdentifier == PremiumStore.productID
+        })
+        try session.refundTransaction(identifier: transaction.identifier)
+        await waitForObservedEntitlement(false, in: store)
+    }
+
+    @MainActor
     func testPurchaseUnlocksPremiumAndRefundRevokesIt() async throws {
         let session = try makeSession()
         session.clearTransactions()
@@ -67,19 +85,20 @@ final class PremiumStoreTests: XCTestCase {
     }
 
     @MainActor
-    func testCancelledPurchaseLeavesPremiumLocked() async throws {
+    func testSimulatedPurchaseFailureLeavesPremiumLocked() async throws {
         let session = try makeSession()
         session.clearTransactions()
         let store = PremiumStore.shared
         await store.prepare()
         await waitForEntitlement(false, in: store)
 
-        // The purchase sheet's userCancelled result needs a human UI tap;
-        // simulate StoreKit's equivalent cancellation error in this unit test.
-        try await session.setSimulatedError(.generic(.userCancelled), forAPI: .purchase)
+        // A failed StoreKit request must not grant an entitlement. Canceling
+        // the purchase sheet is covered manually because it returns a distinct
+        // PurchaseResult.userCancelled value.
+        try await session.setSimulatedError(.generic(.unknown), forAPI: .purchase)
         let result = await store.purchase()
-        guard case .cancelled = result else {
-            return XCTFail("Expected a cancelled purchase, received \(String(describing: result))")
+        guard case .failed = result else {
+            return XCTFail("Expected a failed purchase, received \(String(describing: result))")
         }
         XCTAssertFalse(store.isPremium)
         XCTAssertTrue(session.allTransactions().isEmpty)
@@ -104,5 +123,15 @@ final class PremiumStoreTests: XCTestCase {
             try? await Task.sleep(for: .milliseconds(100))
         }
         XCTFail("Expected isPremium = \(expected), got \(store.isPremium)")
+    }
+
+    @MainActor
+    private func waitForObservedEntitlement(_ expected: Bool, in store: PremiumStore) async {
+        // Intentionally avoid refreshEntitlements: this checks the updates listener.
+        for _ in 0..<80 {
+            if store.isPremium == expected { return }
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        XCTFail("Transaction listener did not update isPremium to \(expected)")
     }
 }

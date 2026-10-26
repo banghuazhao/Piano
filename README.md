@@ -2,7 +2,7 @@
 
 A tactile iOS piano keyboard built with SwiftUI and AVAudioEngine. Play the full 88-key A0–C8 range, practice with highlighted notes, connect a MIDI keyboard, and save or export your performances.
 
-<img src="screenshots/pianoflow-premium.jpg" alt="PianoFlow instrument view" width="720" />
+<img src="StoreAssets/en-US/iPhone/01-play-a-real-piano.png" alt="PianoFlow instrument with Liquid Glass controls" width="720" />
 
 ### 📲 Download on the App Store
 
@@ -21,6 +21,7 @@ A tactile iOS piano keyboard built with SwiftUI and AVAudioEngine. Play the full
 - **⏺️ Performance library**: Record notes, velocity, and sustain; rename, trim copies, loop a section, adjust playback speed, and share MIDI, WAV, or M4A files
 - **🔊 PianoFlow Premium**: A one-time purchase removes ads and adds Warm Studio and Bright Hall sound profiles
 - **📱 Instrument design**: Responsive ivory and ebony keys with a compact dark control panel
+- **🫧 Liquid Glass**: Native iOS 26 control surfaces and navigation, with opaque high-contrast/Reduce Transparency controls and an iOS 17.6 fallback
 - **🏗️ MVVM Architecture**: Clean separation with `@Observable` view models and Swift concurrency
 
 ### 🏗️ Architecture
@@ -42,9 +43,9 @@ A tactile iOS piano keyboard built with SwiftUI and AVAudioEngine. Play the full
 - ⚙️ `SettingsView` provides customization options with persistent storage
 
 ### 🛠️ Requirements
-- 💻 Xcode 16 or later
+- 💻 Xcode 27.1 or later (Liquid Glass and iPhone Duo SDK support)
 - 📱 iOS 17.6 or later
-- 🖥️ macOS Sonoma or later for development
+- 🖥️ A macOS release supported by Xcode 27.1
 
 ### 🚀 Getting Started
 1. 📥 Clone the repository
@@ -97,6 +98,8 @@ Piano/
 ### Verification and Premium setup
 
 Run `bash Scripts/check-features.sh` to check rhythm scoring, practice progress, MIDI input and file import, score notation, recording boundaries, playback, and file export models. Build the `Piano` scheme for normal development. Use its local StoreKit configuration to test Premium; see [Premium setup](Docs/PremiumSetup.md) for product configuration and purchase testing.
+
+Release screenshots, headline copy, Header/Search Results artwork, and regeneration instructions live in [StoreAssets](StoreAssets/README.md). The iPhone Duo uses the available window geometry for its inner and outer displays; iOS 17.6 remains the minimum supported system.
 
 MIDI import supports Standard MIDI format 0 and 1 with PPQN timing. Percussion and notes outside A0–C8 are skipped and reported. Format 2 and SMPTE timing receive a clear unsupported-file error. Practice uses one selected tempo and meter; files with tempo or meter changes disclose that simplification. The importer limits file size, note count, song duration, and library storage to keep malformed or unusually large files from overwhelming the instrument.
 

@@ -309,10 +309,11 @@ final class PracticeSession {
             let barLength = Double((exercise?.beatsPerBar ?? 4) * 4) / Double(exercise?.beatUnit ?? 4)
             let replayBeat = floor(currentBeat / barLength) * barLength
             let replaying = replayBeat + 0.000_001 < currentBeat
+            beginRhythmTimeline(from: replayBeat, countInBars: max(1, options.countInBars))
+            guard !isPaused else { return }
             if replaying { rewindRhythmBar(from: replayBeat, to: replayBeat + barLength) }
             currentBeat = replayBeat
-            beginRhythmTimeline(from: replayBeat, countInBars: max(1, options.countInBars))
-            if replaying && !isPaused { feedbackMessage = "Count in, then replay this bar." }
+            if replaying { feedbackMessage = "Count in, then replay this bar." }
         } else {
             isPaused = false
             if let currentStep { feedbackMessage = prompt(for: currentStep) }
@@ -343,6 +344,7 @@ final class PracticeSession {
               exercise.steps[expiryCursor].beat + tolerance < currentBeat {
             newlyMissed += pendingRhythmNotes[expiryCursor].count
             pendingRhythmNotes[expiryCursor].removeAll()
+            firstChordOnset.removeValue(forKey: expiryCursor)
             expiryCursor += 1
         }
         if newlyMissed > 0 {
@@ -466,8 +468,11 @@ final class PracticeSession {
         }
 
         let index = best.0
-        if firstChordOnset[index] == nil { firstChordOnset[index] = currentBeat }
+        if exercise.steps[index].isChord, firstChordOnset[index] == nil {
+            firstChordOnset[index] = currentBeat
+        }
         pendingRhythmNotes[index].remove(note)
+        if pendingRhythmNotes[index].isEmpty { firstChordOnset.removeValue(forKey: index) }
         pendingRhythmNoteCount -= 1
         matchedRhythmNotes[index].insert(note)
         correctNoteCount += 1

@@ -6,6 +6,7 @@ import SwiftUI
 
 struct SettingsKeyWidthControl: View {
     @Binding var keyWidth: Double
+    private var safeWidth: Double { keyWidth.isFinite ? min(90, max(30, keyWidth)) : 50 }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -28,7 +29,7 @@ struct SettingsKeyWidthControl: View {
 
                 Spacer(minLength: 8)
 
-                Text("\(Int(keyWidth)) pt")
+                Text("\(Int(safeWidth)) pt")
                     .font(.subheadline.monospacedDigit().bold())
                     .foregroundStyle(PianoTheme.brass)
                     .padding(.horizontal, 10)
@@ -37,10 +38,10 @@ struct SettingsKeyWidthControl: View {
                     .accessibilityHidden(true)
             }
 
-            Slider(value: $keyWidth, in: 30...90, step: 5)
+            Slider(value: Binding(get: { safeWidth }, set: { keyWidth = $0 }), in: 30...90, step: 5)
                 .tint(PianoTheme.brass)
                 .accessibilityLabel("Key width")
-                .accessibilityValue("\(Int(keyWidth)) points")
+                .accessibilityValue("\(Int(safeWidth)) points")
 
             HStack {
                 Text("NARROW")

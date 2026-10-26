@@ -8,6 +8,8 @@ struct PracticeLibraryView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showImporter = false
     @State private var isImporting = false
+    @State private var importTask: Task<Void, Never>?
+    @State private var importID: UUID?
     @State private var importError: String?
     @State private var importedSong: ImportedPracticeSong?
     @State private var showImportedSong = false
@@ -15,7 +17,7 @@ struct PracticeLibraryView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 26) {
+                LazyVStack(alignment: .leading, spacing: 26) {
                     header
                     dailyProgressCard
                     importedSongs
@@ -53,8 +55,7 @@ struct PracticeLibraryView: View {
             }
             .background(PianoTheme.background.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(PianoTheme.background, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .pianoNavigationChrome()
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("GUIDED PRACTICE")
@@ -77,14 +78,28 @@ struct PracticeLibraryView: View {
                                                 UTType(filenameExtension: "midi") ?? .audio]) { result in
                 switch result {
                 case .success(let url):
+                    importTask?.cancel()
+                    let id = UUID()
+                    importID = id
                     isImporting = true
-                    Task { @MainActor in
-                        defer { isImporting = false }
-                        do {
-                            importedSong = try await library.importFile(url: url)
-                            showImportedSong = true
+                    importTask = Task {
+                        defer {
+                            if importID == id {
+                                isImporting = false
+                                importID = nil
+                                importTask = nil
+                            }
                         }
-                        catch { importError = error.localizedDescription }
+                        do {
+                            let song = try await library.importFile(url: url)
+                            guard !Task.isCancelled, importID == id else { return }
+                            importedSong = song
+                            showImportedSong = true
+                        } catch is CancellationError {
+                            // Leaving the library cancels an in-progress import.
+                        } catch {
+                            if importID == id { importError = error.localizedDescription }
+                        }
                     }
                 case .failure(let error): importError = error.localizedDescription
                 }
@@ -98,6 +113,12 @@ struct PracticeLibraryView: View {
         .tint(PianoTheme.brass)
         .preferredColorScheme(.dark)
         .presentationDragIndicator(.visible)
+        .onDisappear {
+            importTask?.cancel()
+            importTask = nil
+            importID = nil
+            isImporting = false
+        }
     }
 
     private var header: some View {
@@ -210,7 +231,7 @@ struct PracticeLibraryView: View {
     }
 
     private var importedSongs: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        LazyVStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Your MIDI songs")
                     .font(.title3.bold())

@@ -41,7 +41,7 @@ struct PracticeSessionPanel: View {
                         }
                         .labelStyle(.iconOnly)
                         .frame(width: 44, height: 44)
-                        .background(PianoTheme.panelRaised, in: RoundedRectangle(cornerRadius: 9))
+                        .pianoControlSurface(cornerRadius: 9, interactive: true)
                     }
 
                     Menu {
@@ -51,7 +51,7 @@ struct PracticeSessionPanel: View {
                         Label("Practice options", systemImage: "ellipsis")
                             .labelStyle(.iconOnly)
                             .frame(width: 44, height: 44)
-                            .background(PianoTheme.panelRaised, in: RoundedRectangle(cornerRadius: 9))
+                            .pianoControlSurface(cornerRadius: 9, interactive: true)
                     }
 
                     Button("Exit practice", systemImage: "xmark") {
@@ -59,10 +59,11 @@ struct PracticeSessionPanel: View {
                     }
                     .labelStyle(.iconOnly)
                     .frame(width: 44, height: 44)
-                    .background(PianoTheme.panelRaised, in: RoundedRectangle(cornerRadius: 9))
+                    .pianoControlSurface(cornerRadius: 9, interactive: true)
                     .contentShape(Rectangle())
                     .accessibilityHint("Closes guided practice")
                 }
+                .pianoGlassContainer()
                 .buttonStyle(.plain)
                 .font(.subheadline)
                 .foregroundStyle(PianoTheme.ivory)

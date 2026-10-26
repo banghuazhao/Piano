@@ -42,7 +42,7 @@ struct WhitePianoKeyView: View {
         .overlay(alignment: .bottom) {
             if showLabels && (!octaveNamesOnly || key.note == .C) {
                 Text(key.displayName)
-                    .font(.system(size: labelSize, weight: key.note == .C ? .semibold : .medium, design: .rounded))
+                    .font(.system(size: min(labelSize, 16), weight: key.note == .C ? .semibold : .medium, design: .rounded))
                     .foregroundStyle(Color(hex: 0x4C473FFF))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)

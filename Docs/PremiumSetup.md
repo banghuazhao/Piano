@@ -20,6 +20,14 @@ Apple setup: [create a non-consumable purchase](https://developer.apple.com/help
 3. In Xcode's StoreKit transaction manager, refund or delete the transaction and verify the app returns to Concert and free ad behavior. Use StoreKit Testing's Ask to Buy and interrupted-purchase options for pending and cancellation behavior.
 4. Before Sandbox or TestFlight testing, set Run → Options → StoreKit Configuration to **None**. Local StoreKit transactions are separate from Sandbox and production transactions.
 
-Automated StoreKit cases are implemented in the `PianoStoreKitTests` target and use the same fixture in the test bundle. They cover purchase and refund, restore, Ask to Buy approval, and an injected cancellation error. Run them with `xcodebuild test -project Piano.xcodeproj -scheme Piano -destination 'platform=iOS Simulator,name=<installed simulator>'`. StoreKit test sessions share one environment, so run these tests serially. Also cancel the purchase sheet manually to exercise StoreKit's `.userCancelled` result.
+Automated StoreKit cases are implemented in the `PianoStoreKitTests` target. The shared `PianoStoreKit.xctestplan` activates the fixture before the app host launches; pass the test plan explicitly in command-line runs:
+
+```sh
+xcodebuild test -project Piano.xcodeproj -scheme Piano -testPlan PianoStoreKit \
+  -destination 'platform=iOS Simulator,name=<iOS 27 simulator>' \
+  -parallel-testing-enabled NO
+```
+
+The five cases cover purchase and refund, restore, Ask to Buy approval, transaction updates after an early entitlement refresh, and an injected purchase failure. StoreKit test sessions share one environment, so keep these tests serial. Also cancel the purchase sheet manually to exercise StoreKit's `.userCancelled` result. If an iOS 26.5 simulator reports `SKInternalErrorDomain Code=3` from `SKTestSession`, use a newer simulator runtime; [Apple acknowledged this StoreKit testing issue](https://developer.apple.com/forums/thread/826971). All five cases passed on an iOS 27 simulator with Xcode 27.1 on 26 October 2026.
 
 Apple testing reference: [Set up StoreKit Testing in Xcode](https://developer.apple.com/documentation/Xcode/setting-up-storekit-testing-in-xcode).

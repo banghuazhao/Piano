@@ -1,0 +1,31 @@
+{
+  "configurations" : [
+    {
+      "id" : "B7953145-0EF0-430B-9FE7-02D0429F746C",
+      "name" : "StoreKit",
+      "options" : {
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "storeKitConfiguration" : {
+      "identifier" : "PianoFlow.storekit"
+    },
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:Piano.xcodeproj",
+      "identifier" : "9939FBE02E6931810055BF3C",
+      "name" : "Piano"
+    }
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : false,
+      "target" : {
+        "containerPath" : "container:Piano.xcodeproj",
+        "identifier" : "A7F0B6F12F0A11EF8B00000A",
+        "name" : "PianoStoreKitTests"
+      }
+    }
+  ],
+  "version" : 1
+}

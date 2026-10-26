@@ -18,6 +18,9 @@ final class AdPrivacyManager: ObservableObject {
 
     private var didRequestConsent = false
     private var hasResolvedConsent = false
+    private var didUpdateConsentInfo = false
+    private var didCompleteConsentForm = false
+    private var isLoadingConsentForm = false
     private var didStartMobileAds = false
     private var isPresentingPrivacyOptions = false
     private var onAdsReady: (() -> Void)?
@@ -36,6 +39,7 @@ final class AdPrivacyManager: ObservableObject {
         self.onAdsReady = onAdsReady
         if hasResolvedConsent {
             updateConsentState()
+            Task { await completeConsentFormIfNeeded() }
             return
         }
         guard !didRequestConsent else { return }
@@ -45,10 +49,9 @@ final class AdPrivacyManager: ObservableObject {
             do {
                 // UMP must update its status at least once in every app session.
                 try await ConsentInformation.shared.requestConsentInfoUpdate(with: RequestParameters())
+                didUpdateConsentInfo = true
                 updatePrivacyOptionsRequirement()
-                if !PremiumStore.shared.isPremium {
-                    try await ConsentForm.loadAndPresentIfRequired(from: nil)
-                }
+                await completeConsentFormIfNeeded()
             } catch {
                 // UMP may still permit requests using consent from a previous session.
                 print("[ADS] Consent update failed: \(error.localizedDescription)")
@@ -79,6 +82,22 @@ final class AdPrivacyManager: ObservableObject {
 
     private func updatePrivacyOptionsRequirement() {
         privacyOptionsRequired = ConsentInformation.shared.privacyOptionsRequirementStatus == .required
+    }
+
+    private func completeConsentFormIfNeeded() async {
+        guard didUpdateConsentInfo, !didCompleteConsentForm,
+              !isLoadingConsentForm, !PremiumStore.shared.isPremium else { return }
+        isLoadingConsentForm = true
+        defer {
+            isLoadingConsentForm = false
+            updateConsentState()
+        }
+        do {
+            try await ConsentForm.loadAndPresentIfRequired(from: nil)
+            didCompleteConsentForm = true
+        } catch {
+            print("[ADS] Consent form could not be presented: \(error.localizedDescription)")
+        }
     }
 
     private func updateConsentState() {

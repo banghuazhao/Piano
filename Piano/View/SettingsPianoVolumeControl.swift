@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsPianoVolumeControl: View {
     @Binding var volume: Double
+    private var safeVolume: Double { volume.isFinite ? min(1, max(0, volume)) : 0.85 }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -24,15 +25,15 @@ struct SettingsPianoVolumeControl: View {
 
                 Spacer(minLength: 8)
 
-                Text("\(Int((volume * 100).rounded()))%")
+                Text("\(Int((safeVolume * 100).rounded()))%")
                     .font(.subheadline.monospacedDigit().bold())
                     .foregroundStyle(PianoTheme.brass)
             }
 
-            Slider(value: $volume, in: 0...1)
+            Slider(value: Binding(get: { safeVolume }, set: { volume = $0 }), in: 0...1)
                 .tint(PianoTheme.brass)
                 .accessibilityLabel("Piano volume")
-                .accessibilityValue("\(Int((volume * 100).rounded())) percent")
+                .accessibilityValue("\(Int((safeVolume * 100).rounded())) percent")
         }
         .padding(.vertical, 16)
     }

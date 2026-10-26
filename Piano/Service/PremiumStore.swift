@@ -36,9 +36,17 @@ final class PremiumStore {
     @ObservationIgnored private var transactionUpdatesTask: Task<Void, Never>?
     @ObservationIgnored private var entitlementRevision = 0
 
-    private init() {}
+    init() {}
+
+    deinit {
+        preparationTask?.cancel()
+        transactionUpdatesTask?.cancel()
+    }
 
     func prepare() async {
+        // A foreground entitlement refresh can finish before app startup's
+        // prepare call. Keep the transaction listener alive in either order.
+        listenForTransactionUpdates()
         if hasDeterminedEntitlement { return }
         if let preparationTask {
             await preparationTask.value
@@ -47,7 +55,6 @@ final class PremiumStore {
 
         let task = Task { [weak self] in
             guard let self else { return }
-            self.listenForTransactionUpdates()
             await self.refreshEntitlements()
         }
         preparationTask = task
@@ -67,7 +74,7 @@ final class PremiumStore {
         }
 
         // A purchase or revocation may arrive while this sequence is suspended.
-        guard revisionAtStart == entitlementRevision else { return }
+        guard !Task.isCancelled, revisionAtStart == entitlementRevision else { return }
         isPremium = hasVerifiedPurchase
         hasDeterminedEntitlement = true
     }

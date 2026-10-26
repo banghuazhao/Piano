@@ -46,7 +46,7 @@ struct PracticeTempoView: View {
         }
         .frame(width: 320)
         .frame(maxHeight: 340)
-        .background(PianoTheme.panel)
+        .pianoPopoverSurface()
         .foregroundStyle(PianoTheme.ivory)
         .tint(PianoTheme.brass)
         .preferredColorScheme(.dark)

@@ -9,6 +9,7 @@ import SwiftUI
 struct PianoApp: App {
     @StateObject private var openAd = OpenAd()
     @State private var premium = PremiumStore.shared
+    @State private var activationTask: Task<Void, Never>?
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -16,15 +17,18 @@ struct PianoApp: App {
             PianoView()
                 .task {
                     await premium.prepare()
-                    if !premium.isPremium {
+                    if scenePhase == .active && !premium.isPremium {
                         prepareAds()
                     }
                 }
                 .onChange(of: scenePhase) { _, newPhase in
                     if newPhase == .active {
-                        Task {
-                            await premium.refreshEntitlements()
-                            guard scenePhase == .active else { return }
+                        activationTask?.cancel()
+                        activationTask = Task {
+                            let needsRefresh = premium.hasDeterminedEntitlement
+                            await premium.prepare()
+                            if needsRefresh { await premium.refreshEntitlements() }
+                            guard !Task.isCancelled, scenePhase == .active else { return }
                             if premium.isPremium {
                                 AdPrivacyManager.shared.stopAdsForPremium()
                                 openAd.discardCachedAd()
@@ -34,14 +38,19 @@ struct PianoApp: App {
                             }
                         }
                     } else if newPhase == .background {
+                        activationTask?.cancel()
+                        activationTask = nil
                         openAd.sceneDidEnterBackground()
+                    } else {
+                        activationTask?.cancel()
+                        activationTask = nil
                     }
                 }
                 .onChange(of: premium.isPremium) { _, isPremium in
                     if isPremium {
                         AdPrivacyManager.shared.stopAdsForPremium()
                         openAd.discardCachedAd()
-                    } else if premium.hasDeterminedEntitlement {
+                    } else if premium.hasDeterminedEntitlement && scenePhase == .active {
                         prepareAds()
                     }
                 }

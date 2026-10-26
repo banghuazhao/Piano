@@ -97,8 +97,7 @@ struct SettingsView: View {
             }
             .background(PianoTheme.background.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(PianoTheme.background, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .pianoNavigationChrome()
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("PIANO SETTINGS")
