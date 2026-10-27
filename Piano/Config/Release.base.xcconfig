@@ -1,0 +1,3 @@
+// Tracked Release configuration. The optional local file is deliberately ignored.
+// The Piano target validates the resolved ad IDs before every Release build.
+#include? "Release.xcconfig"

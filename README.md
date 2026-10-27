@@ -93,11 +93,14 @@ Piano/
   - Octave-specific key name display options
   - Piano volume
   - Piano sound profiles and the one-time Premium upgrade
+  - Privacy policy, support email, and the installed app version/build
 - **🎨 Customization**: Replace `Piano.sf2` with a licensed SoundFont to change the piano sound.
 
 ### Verification and Premium setup
 
 Run `bash Scripts/check-features.sh` to check rhythm scoring, practice progress, MIDI input and file import, score notation, recording boundaries, playback, and file export models. Build the `Piano` scheme for normal development. Use its local StoreKit configuration to test Premium; see [Premium setup](Docs/PremiumSetup.md) for product configuration and purchase testing.
+
+For Release, supply the three production AdMob IDs through the ignored local configuration before creating a signed archive. The build checks resolved IDs and excludes configuration files from the app bundle. See [Release build setup](Docs/ReleaseSetup.md) for clean-checkout and CI steps.
 
 Release screenshots, headline copy, Header/Search Results artwork, and regeneration instructions live in [StoreAssets](StoreAssets/README.md). The iPhone Duo uses the available window geometry for its inner and outer displays; iOS 17.6 remains the minimum supported system.
 

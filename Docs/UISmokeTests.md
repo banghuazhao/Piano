@@ -30,6 +30,7 @@ The assertions in [PianoSmokeTests.swift](../PianoUITests/PianoSmokeTests.swift)
 - Practice progress and playable keys survive landscape rotations on displays that follow interface orientation requests.
 - Practice progress and playable keys survive portrait resizing on iPad. This case skips on standard iPhones, where the app supports landscape, and on the open iPhone Duo inner display.
 - The toolbar remains reachable and the Key labels setting can be changed at AX5.
+- Privacy, support, and installed version/build details stay reachable at AX5 without Premium or ad-consent requirements.
 - Locked recording tools open the matching Premium offer, and free full-take M4A export renders a shareable audio file.
 - The Premium paywall supports AX5 text and its Done control remains reachable.
 
@@ -56,3 +57,5 @@ The iPhone AX results combine the full run with focused reruns after correcting 
 Both Premium cases additionally passed on iPhone 17 with iOS 26.5. The recording case checks that studio and WAV offers show their matching headline, WAV remains locked for a free user, and normal-speed Concert M4A export produces a shareable file. The AX5 paywall case checks horizontal text bounds, scrolls through all benefits and the bottom free-features disclosure, and retains full-screen and scroll-area screenshots for visual review. The app-only screenshot from XCTest can contain an incorrect landscape crop on this runtime; the full-screen capture and accessibility geometry were correct.
 
 The final unsigned Release device build and feature checks passed. Real local StoreKit purchase, restore, pending, and refund behavior are covered separately by the serial StoreKit suite described in [PremiumSetup.md](PremiumSetup.md); production Sandbox/TestFlight checks remain part of release setup.
+
+The Privacy and Support case also passed on iPhone 17 with iOS 26.5 at AX5. It checks that both controls and the installed version/build are reachable and fit within the visible screen. The privacy destination and support address were verified against the published App Store privacy policy; the test does not send mail or depend on a mail account being configured.

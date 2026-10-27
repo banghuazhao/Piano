@@ -83,6 +83,8 @@ struct SettingsView: View {
                         }
                     }
 
+                    SettingsSupportSection()
+
                     Button("Restore default settings", systemImage: "arrow.counterclockwise") {
                         showingResetConfirmation = true
                     }

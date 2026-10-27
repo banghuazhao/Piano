@@ -43,6 +43,10 @@
 		9939FC752E6D02F10055BF3C /* Exceptions for "Piano" folder in "Piano" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				"Config/Debug.xcconfig",
+				"Config/Release.base.xcconfig",
+				"Config/Release.example.xcconfig",
+				"Config/Release.xcconfig",
 				Info.plist,
 			);
 			target = 9939FBE02E6931810055BF3C /* Piano */;
@@ -130,6 +134,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 9939FBEC2E6931830055BF3C /* Build configuration list for PBXNativeTarget "Piano" */;
 			buildPhases = (
+				C0D3E1702E70000100000001 /* Validate Release ad IDs */,
 				9939FBDD2E6931810055BF3C /* Sources */,
 				9939FBDE2E6931810055BF3C /* Frameworks */,
 				9939FBDF2E6931810055BF3C /* Resources */,
@@ -257,6 +262,26 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		C0D3E1702E70000100000001 /* Validate Release ad IDs */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/Scripts/check-release-config.sh",
+			);
+			name = "Validate Release ad IDs";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [ \"${CONFIGURATION}\" = \"Release\" ]; then\n  /bin/bash \"${SRCROOT}/Scripts/check-release-config.sh\"\nfi\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		9939FBDD2E6931810055BF3C /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -366,7 +391,7 @@
 		9939FBEB2E6931830055BF3C /* Release */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReferenceAnchor = 9939FBE32E6931810055BF3C /* Piano */;
-			baseConfigurationReferenceRelativePath = Config/Release.xcconfig;
+			baseConfigurationReferenceRelativePath = Config/Release.base.xcconfig;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -459,7 +484,7 @@
 		9939FBEE2E6931830055BF3C /* Release */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReferenceAnchor = 9939FBE32E6931810055BF3C /* Piano */;
-			baseConfigurationReferenceRelativePath = Config/Release.xcconfig;
+			baseConfigurationReferenceRelativePath = Config/Release.base.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;

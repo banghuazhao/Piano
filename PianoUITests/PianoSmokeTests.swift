@@ -206,6 +206,52 @@ final class PianoSmokeTests: XCTestCase {
         XCTAssertTrue(more.isHittable)
     }
 
+    func testSettingsPrivacyAndSupportRemainAvailableAtLargestText() {
+        executionTimeAllowance = 240
+        let app = launchApp(largeText: true)
+        tapToolbarControl("piano.settings", menuTitle: "Settings", in: app)
+        let scroll = app.scrollViews["settings.scroll"]
+        XCTAssertTrue(scroll.waitForExistence(timeout: 5))
+
+        // This section is below the keyboard and MIDI preferences. At AX5,
+        // move through that long screen before fine-scrolling to each row.
+        // Use the gutter so the gesture cannot adjust a volume slider.
+        for _ in 0..<8 {
+            scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.85))
+                .press(forDuration: 0.1, thenDragTo: scroll.coordinate(
+                    withNormalizedOffset: CGVector(dx: 0.1, dy: 0.15)
+                ), withVelocity: .fast, thenHoldForDuration: 0.2)
+        }
+
+        for identifier in ["settings.privacyPolicy", "settings.contactSupport"] {
+            let control = app.descendants(matching: .any)
+                .matching(identifier: identifier).firstMatch
+            scrollUntilHittable(control, targetID: identifier,
+                                scrollID: "settings.scroll", in: app)
+            XCTAssertTrue(control.isHittable, "Privacy and support must remain reachable for free users")
+            XCTAssertGreaterThanOrEqual(control.frame.height, 44)
+            let viewport = scroll.frame.intersection(app.windows.firstMatch.frame)
+            XCTAssertGreaterThanOrEqual(control.frame.minX, viewport.minX - 2)
+            XCTAssertLessThanOrEqual(control.frame.maxX, viewport.maxX + 2)
+        }
+
+        let version = app.descendants(matching: .any)
+            .matching(identifier: "settings.appVersion").firstMatch
+        scrollUntilHittable(version, targetID: "settings.appVersion",
+                            scrollID: "settings.scroll", in: app)
+        XCTAssertTrue(version.label.contains("Version "), "Show the installed app version and build")
+        XCTAssertTrue(version.label.contains("("), "Include the build number in support details")
+        let viewport = scroll.frame.intersection(app.windows.firstMatch.frame)
+        XCTAssertGreaterThanOrEqual(version.frame.minX, viewport.minX - 2)
+        XCTAssertLessThanOrEqual(version.frame.maxX, viewport.maxX + 2)
+        let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        screenshot.name = "Privacy and support at largest app text size"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        app.buttons["Done"].tap()
+        XCTAssertTrue(app.buttons["piano.record"].waitForExistence(timeout: 5))
+    }
+
     func testPremiumRecordingControlsProtectPaidFeaturesAndKeepM4AFree() {
         let app = launchApp()
         tapToolbarControl("piano.record", menuTitle: "Record", in: app)

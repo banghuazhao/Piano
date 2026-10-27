@@ -142,3 +142,4 @@ logs/
 .env.test
 .env.production 
 Piano/Config/Release.xcconfig
+Piano/Config/Release.xcconfig.tmp.*

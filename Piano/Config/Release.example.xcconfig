@@ -1,0 +1,5 @@
+// Copy to Release.xcconfig and replace every placeholder with a production AdMob ID.
+// Do not use Google's sample IDs in a Release build.
+GADApplicationIdentifier = YOUR_PRODUCTION_ADMOB_APP_ID
+bannerViewAdUnitID = YOUR_PRODUCTION_BANNER_AD_UNIT_ID
+appOpenAdID = YOUR_PRODUCTION_APP_OPEN_AD_UNIT_ID
