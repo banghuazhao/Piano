@@ -2,10 +2,15 @@ import SwiftUI
 
 @MainActor
 struct PremiumView: View {
+    let feature: PremiumFeature?
     @State private var store = PremiumStore.shared
     @State private var feedbackMessage = ""
     @State private var showingFeedback = false
     @Environment(\.dismiss) private var dismiss
+
+    init(feature: PremiumFeature? = nil) {
+        self.feature = feature
+    }
 
     var body: some View {
         NavigationStack {
@@ -17,19 +22,20 @@ struct PremiumView: View {
                             .foregroundStyle(PianoTheme.brass)
                             .accessibilityHidden(true)
 
-                        Text("Your piano, without limits")
+                        Text(feature?.title ?? "Your piano. Your studio.")
                             .font(.largeTitle.bold())
                             .foregroundStyle(PianoTheme.ivory)
+                            .accessibilityIdentifier("premium.headline")
 
-                        Text("Make every practice session uninterrupted and shape the sound to suit the room.")
+                        Text(feature?.detail ?? "A one-time upgrade for uninterrupted playing and a more capable recording studio.")
                             .font(.body)
                             .foregroundStyle(PianoTheme.secondary)
                     }
 
                     VStack(alignment: .leading, spacing: 18) {
-                        benefit("Play without ads", symbol: "sparkles", detail: "An uninterrupted instrument every time you return.")
-                        benefit("Warm Studio", symbol: "waveform", detail: "A close, mellow piano with rounded lows.")
-                        benefit("Bright Hall", symbol: "music.note.house", detail: "A clear, spacious piano for expressive playing.")
+                        ForEach(PremiumFeature.allCases) { benefit in
+                            self.benefit(benefit.title, symbol: benefit.symbol, detail: benefit.detail)
+                        }
                     }
                     .padding(22)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -40,6 +46,7 @@ struct PremiumView: View {
                             .font(.headline)
                             .foregroundStyle(PianoTheme.brass)
                             .frame(maxWidth: .infinity, minHeight: 56)
+                            .accessibilityIdentifier("premium.active")
                     } else {
                         purchaseControls
                     }
@@ -55,12 +62,13 @@ struct PremiumView: View {
                                 .frame(maxWidth: .infinity, minHeight: 48)
                         }
                     }
-                    .disabled(store.isRestoring || store.isPurchasing)
+                    .disabled(!store.hasDeterminedEntitlement || store.isRestoring || store.isPurchasing)
                     .buttonStyle(.plain)
                     .foregroundStyle(PianoTheme.secondary)
                     .accessibilityHint("Checks your App Store account for a previous Premium purchase")
+                    .accessibilityIdentifier("premium.restore")
 
-                    Text("One purchase. No subscription. Your existing piano, metronome, and recording tools stay free.")
+                    Text("One purchase. No subscription. Play, practice, record, replay, share MIDI, and export compact M4A audio for free.")
                         .font(.footnote)
                         .foregroundStyle(PianoTheme.secondary)
                         .frame(maxWidth: .infinity)
@@ -72,10 +80,13 @@ struct PremiumView: View {
                 .padding(.vertical, 28)
             }
             .background(PianoTheme.background.ignoresSafeArea())
+            .accessibilityIdentifier("premium.scroll")
             .navigationBarTitleDisplayMode(.inline)
+            .pianoNavigationChrome()
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done", action: dismiss.callAsFunction)
+                        .accessibilityIdentifier("premium.done")
                 }
             }
             .alert("PianoFlow Premium", isPresented: $showingFeedback) {
@@ -95,7 +106,10 @@ struct PremiumView: View {
 
     @ViewBuilder
     private var purchaseControls: some View {
-        if let price = store.localizedPrice {
+        if !store.hasDeterminedEntitlement {
+            ProgressView("Checking your purchases")
+                .frame(maxWidth: .infinity, minHeight: 56)
+        } else if let price = store.localizedPrice {
             Button {
                 Task { await purchase() }
             } label: {
@@ -113,6 +127,7 @@ struct PremiumView: View {
             .tint(PianoTheme.brass)
             .foregroundStyle(PianoTheme.background)
             .accessibilityHint("A one-time purchase through the App Store")
+            .accessibilityIdentifier("premium.purchase")
         } else if store.isLoadingProduct {
             ProgressView("Checking availability")
                 .frame(maxWidth: .infinity, minHeight: 56)
@@ -155,7 +170,7 @@ struct PremiumView: View {
     private func purchase() async {
         switch await store.purchase() {
         case .purchased:
-            showFeedback("Premium is ready. Enjoy ad-free playing and the new sound profiles.")
+            showFeedback("Premium is ready. Ad-free playing, both piano sounds, advanced recording tools, and lossless WAV export are unlocked.")
         case .pending:
             showFeedback("Your purchase is pending approval. Premium will unlock automatically when the App Store confirms it.")
         case .cancelled:

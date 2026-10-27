@@ -20,15 +20,20 @@ final class PerformanceStudio {
     @ObservationIgnored private var playbackGeneration = UUID()
     @ObservationIgnored private var playbackLease: PlaybackLease?
     @ObservationIgnored private let libraryURL: URL
+    @ObservationIgnored private let hasPremiumAccess: @MainActor () -> Bool
     @ObservationIgnored private var persistenceBlocked = false
 
-    init(libraryURL: URL? = nil) {
+    init(
+        libraryURL: URL? = nil,
+        hasPremiumAccess: @escaping @MainActor () -> Bool = { PremiumStore.shared.isPremium }
+    ) {
         self.libraryURL = libraryURL ?? FileManager.default.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask
         )[0]
             .appendingPathComponent("PianoFlow", isDirectory: true)
             .appendingPathComponent("performances.json")
+        self.hasPremiumAccess = hasPremiumAccess
         loadTakes()
     }
 
@@ -121,13 +126,17 @@ final class PerformanceStudio {
         noteOff: @escaping (UInt8) -> Void,
         sustain: @escaping (Bool) -> Void
     ) {
-        stopPlayback()
         guard take.isValid else {
             lastError = "This performance could not be played."
             return
         }
         guard options.rate.isFinite, (0.5...2).contains(options.rate) else {
             lastError = "Choose a playback speed between 0.5× and 2×."
+            return
+        }
+        let requiresPremium = Self.usesAdvancedPlayback(options)
+        guard !requiresPremium || hasPremiumAccess() else {
+            lastError = "Unlock Premium for speed, loops, and selected-section playback."
             return
         }
         let playbackTake: PerformanceTake
@@ -148,6 +157,7 @@ final class PerformanceStudio {
             lastError = "This section has no notes to play."
             return
         }
+        stopPlayback()
         let generation = UUID()
         let lease = PlaybackLease()
         playbackGeneration = generation
@@ -166,6 +176,12 @@ final class PerformanceStudio {
                 }
             }
             repeat {
+                if requiresPremium, let self,
+                   self.playbackGeneration == generation,
+                   !self.hasPremiumAccess() {
+                    self.stopPlayback()
+                    return
+                }
                 let startedAt = ProcessInfo.processInfo.systemUptime
                 for event in playbackTake.events {
                     guard await Self.waitUntil(event.time / options.rate, startedAt: startedAt),
@@ -256,6 +272,10 @@ final class PerformanceStudio {
 
     @discardableResult
     func saveExcerpt(of take: PerformanceTake, from start: TimeInterval, to end: TimeInterval) -> PerformanceTake? {
+        guard hasPremiumAccess() else {
+            lastError = "Unlock Premium to save a selected section."
+            return nil
+        }
         guard let excerpt = RecordingEditor.excerpt(from: take, start: start, end: end) else {
             lastError = "Choose a section containing notes."
             return nil
@@ -284,11 +304,13 @@ final class PerformanceStudio {
         profile: PianoSoundProfile,
         options: PerformancePlaybackOptions = .init()
     ) async -> URL? {
-        if profile.isPremium {
+        let needsPremium = format == .wav || profile.isPremium || Self.usesAdvancedPlayback(options)
+        if needsPremium {
             await PremiumStore.shared.prepare()
+            await PremiumStore.shared.refreshEntitlements()
             guard !Task.isCancelled else { return nil }
-            guard PremiumStore.shared.isPremium else {
-                lastError = "Unlock Premium to export with this piano sound."
+            guard hasPremiumAccess() else {
+                lastError = Self.premiumExportMessage(format: format, profile: profile)
                 return nil
             }
         }
@@ -303,6 +325,11 @@ final class PerformanceStudio {
                 try? FileManager.default.removeItem(at: url)
                 return nil
             }
+            if needsPremium && !hasPremiumAccess() {
+                try? FileManager.default.removeItem(at: url)
+                lastError = "Premium access changed during export. The audio file was removed."
+                return nil
+            }
             return url
         } catch is CancellationError {
             return nil
@@ -310,6 +337,19 @@ final class PerformanceStudio {
             lastError = error.localizedDescription
             return nil
         }
+    }
+
+    private static func usesAdvancedPlayback(_ options: PerformancePlaybackOptions) -> Bool {
+        options.rate != 1 || options.loop || options.region != nil
+    }
+
+    private static func premiumExportMessage(
+        format: RecordingAudioFormat,
+        profile: PianoSoundProfile
+    ) -> String {
+        if format == .wav { return "Unlock Premium to export lossless WAV audio." }
+        if profile.isPremium { return "Unlock Premium to export with this piano sound." }
+        return "Unlock Premium to export a selected section or custom speed."
     }
 
     private func releasePlaybackNotes(clearCallback: Bool = true) {

@@ -18,8 +18,8 @@ A tactile iOS piano keyboard built with SwiftUI and AVAudioEngine. Play the full
 - **🎼 Sheet music & hands**: Following treble/bass staves with rests, accidentals, and ties; practice left, right, or both hands
 - **📂 MIDI song import**: Import Standard MIDI files from Files, choose which tracks to include, assign hands, and save songs for guided practice
 - **🎛️ MIDI input**: USB and Bluetooth MIDI keyboards with velocity and sustain pedal support
-- **⏺️ Performance library**: Record notes, velocity, and sustain; rename, trim copies, loop a section, adjust playback speed, and share MIDI, WAV, or M4A files
-- **🔊 PianoFlow Premium**: A one-time purchase removes ads and adds Warm Studio and Bright Hall sound profiles
+- **⏺️ Performance library**: Record notes, velocity, and sustain; rename, replay, share MIDI, and export full-take Concert M4A audio
+- **🔊 PianoFlow Premium**: A one-time purchase removes ads and unlocks Warm Studio, Bright Hall, playback speed/loops/sections, trimmed copies, and lossless WAV export
 - **📱 Instrument design**: Responsive ivory and ebony keys with a compact dark control panel
 - **🫧 Liquid Glass**: Native iOS 26 control surfaces and navigation, with opaque high-contrast/Reduce Transparency controls and an iOS 17.6 fallback
 - **🏗️ MVVM Architecture**: Clean separation with `@Observable` view models and Swift concurrency
@@ -79,7 +79,7 @@ Piano/
 - **🧭 Navigation**: 
   - Use octave buttons (C1–C7) to jump across the full A0–C8 range
   - Drag the range slider for fine control
-- **⏺️ Record and replay**: Tap Record, play, then tap Stop. Play replays the latest take; Takes opens saved performances. Tools offers naming, speed, loops, trimmed copies, and WAV/M4A export.
+- **⏺️ Record and replay**: Tap Record, play, then tap Stop. Play replays the latest take; Takes opens saved performances. Tools offers free naming and Concert M4A export; Premium unlocks speed, loops, sections, trimmed copies, and WAV export.
 - **🎼 Guided practice**: Open Practice (or More → Guided practice on compact screens), choose an exercise, then select hands and a mode. At your pace waits for correct notes; Rhythm coach adds a count-in and grades note onset timing. Release repeated notes before replaying them. Note lengths are displayed but are not graded.
 - **🥁 Tempo progression**: Choose a start tempo, goal tempo, and optional +5/+10 BPM increment. A pass with at least 80% pitch and timing accuracy offers the next tempo. Tap it to begin a fresh pass. Pause/resume uses a fresh count-in; audio interruptions also pause practice.
 - **📂 Your MIDI songs**: Choose Import in Practice and select a `.mid` or `.midi` file. Include the parts you want, and assign each to Left, Right, or Split at C4. Assignments, renamed titles, and songs persist on this device. Deleting a song leaves the original MIDI file intact.

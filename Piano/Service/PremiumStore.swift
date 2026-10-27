@@ -33,20 +33,62 @@ final class PremiumStore {
     var localizedPrice: String? { product?.displayPrice }
 
     @ObservationIgnored private var preparationTask: Task<Void, Never>?
+    @ObservationIgnored private var productLoadTask: Task<Void, Never>?
     @ObservationIgnored private var transactionUpdatesTask: Task<Void, Never>?
+    @ObservationIgnored private var hasStartedTransactionUpdates = false
+    @ObservationIgnored private var transactionUpdateStartupWaiters: [CheckedContinuation<Void, Never>] = []
     @ObservationIgnored private var entitlementRevision = 0
+    @ObservationIgnored private let productsForSale: @MainActor () async throws -> [Product]
 
-    init() {}
+    init(productsForSale: @escaping @MainActor () async throws -> [Product] = {
+        try await Product.products(for: [PremiumStore.productID])
+    }) {
+        self.productsForSale = productsForSale
+    }
 
     deinit {
         preparationTask?.cancel()
+        productLoadTask?.cancel()
         transactionUpdatesTask?.cancel()
+    }
+
+    /// Start before the first view task so StoreKit can deliver transactions
+    /// that were completed outside the app or left unfinished at launch.
+    func startObservingTransactions() {
+        guard transactionUpdatesTask == nil else { return }
+        transactionUpdatesTask = Task { [weak self] in
+            var iterator = Transaction.updates.makeAsyncIterator()
+            self?.markTransactionUpdatesStarted()
+            while let result = await iterator.next() {
+                guard let self else { return }
+                guard case .verified(let transaction) = result,
+                      transaction.productID == Self.productID else { continue }
+
+                self.entitlementRevision += 1
+                self.isPremium = transaction.revocationDate == nil
+                self.hasDeterminedEntitlement = true
+                await transaction.finish()
+                await self.refreshEntitlements()
+            }
+        }
+    }
+
+    private func markTransactionUpdatesStarted() {
+        hasStartedTransactionUpdates = true
+        transactionUpdateStartupWaiters.forEach { $0.resume() }
+        transactionUpdateStartupWaiters.removeAll()
+    }
+
+    private func waitForTransactionUpdatesStart() async {
+        guard !hasStartedTransactionUpdates else { return }
+        await withCheckedContinuation { transactionUpdateStartupWaiters.append($0) }
     }
 
     func prepare() async {
         // A foreground entitlement refresh can finish before app startup's
         // prepare call. Keep the transaction listener alive in either order.
-        listenForTransactionUpdates()
+        startObservingTransactions()
+        await waitForTransactionUpdatesStart()
         if hasDeterminedEntitlement { return }
         if let preparationTask {
             await preparationTask.value
@@ -80,31 +122,42 @@ final class PremiumStore {
     }
 
     func loadProduct() async {
-        guard product == nil, !isLoadingProduct else { return }
+        guard product == nil else { return }
+        if let productLoadTask {
+            await productLoadTask.value
+            return
+        }
         isLoadingProduct = true
         productLoadError = nil
-        defer { isLoadingProduct = false }
-
-        do {
-            product = try await Product.products(for: [Self.productID])
-                .first { $0.id == Self.productID && $0.type == .nonConsumable }
-            if product == nil {
-                productLoadError = "Premium is not available in this storefront yet."
+        let task = Task { [weak self] in
+            guard let self else { return }
+            do {
+                self.product = try await self.productsForSale()
+                    .first { $0.id == Self.productID && $0.type == .nonConsumable }
+                if self.product == nil {
+                    self.productLoadError = "Premium is not available in this storefront yet."
+                }
+            } catch {
+                self.productLoadError = "Premium could not be loaded. Check your connection and try again."
             }
-        } catch {
-            productLoadError = "Premium could not be loaded. Check your connection and try again."
+            self.isLoadingProduct = false
+            self.productLoadTask = nil
         }
+        productLoadTask = task
+        await task.value
     }
 
     func purchase() async -> PremiumPurchaseOutcome {
-        await prepare()
-        if isPremium { return .purchased }
-        guard !isPurchasing else { return .pending }
-        if product == nil { await loadProduct() }
-        guard let product else { return .unavailable }
-
+        guard !isPurchasing else { return .failed("A purchase is already in progress.") }
+        guard !isRestoring else { return .failed("Wait for the restore to finish before purchasing.") }
         isPurchasing = true
         defer { isPurchasing = false }
+
+        await prepare()
+        if isPremium { return .purchased }
+        if product == nil { await loadProduct() }
+        if isPremium { return .purchased }
+        guard let product else { return .unavailable }
 
         do {
             switch try await product.purchase() {
@@ -134,10 +187,12 @@ final class PremiumStore {
     }
 
     func restorePurchases() async -> PremiumRestoreOutcome {
-        await prepare()
         guard !isRestoring else { return .failed("A restore is already in progress.") }
+        guard !isPurchasing else { return .failed("Wait for the purchase to finish before restoring.") }
         isRestoring = true
         defer { isRestoring = false }
+
+        await prepare()
 
         do {
             // This can show an App Store sign-in prompt, so only call it on a tap.
@@ -149,21 +204,4 @@ final class PremiumStore {
         }
     }
 
-    private func listenForTransactionUpdates() {
-        guard transactionUpdatesTask == nil else { return }
-        transactionUpdatesTask = Task { [weak self] in
-            for await result in Transaction.updates {
-                guard let self else { return }
-                guard case .verified(let transaction) = result,
-                      transaction.productID == Self.productID else { continue }
-
-                // StoreKit sends refunds and purchases made on another device here.
-                self.entitlementRevision += 1
-                self.isPremium = transaction.revocationDate == nil
-                self.hasDeterminedEntitlement = true
-                await transaction.finish()
-                await self.refreshEntitlements()
-            }
-        }
-    }
 }

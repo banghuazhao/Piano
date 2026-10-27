@@ -12,6 +12,16 @@ struct PianoApp: App {
     @State private var activationTask: Task<Void, Never>?
     @Environment(\.scenePhase) private var scenePhase
 
+    @MainActor
+    init() {
+#if DEBUG && targetEnvironment(simulator)
+        // App-hosted StoreKit tests attach their local catalog during startup.
+        // Let the test session bind before starting this optional early listener.
+        guard ProcessInfo.processInfo.environment["PIANOFLOW_STOREKIT_TESTS"] != "1" else { return }
+#endif
+        PremiumStore.shared.startObservingTransactions()
+    }
+
     var body: some Scene {
         WindowGroup {
             PianoView()

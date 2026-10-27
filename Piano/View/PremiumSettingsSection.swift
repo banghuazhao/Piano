@@ -8,7 +8,7 @@ struct PremiumSettingsSection: View {
     var body: some View {
         SettingsPanel(
             title: "PianoFlow Premium",
-            subtitle: store.isPremium ? "Your upgrade is active" : "More sound, uninterrupted practice",
+            subtitle: store.isPremium ? "Your upgrade is active" : "Ad-free playing and more studio tools",
             symbol: "sparkles"
         ) {
             Button {
@@ -36,6 +36,7 @@ struct PremiumSettingsSection: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("settings.premium")
             .accessibilityHint(store.isPremium
                 ? "View your Premium benefits and restore purchases"
                 : "View the one-time purchase and Premium benefits")
@@ -50,8 +51,8 @@ struct PremiumSettingsSection: View {
     }
 
     private var detail: String {
-        if store.isPremium { return "Ad-free playing and every piano sound" }
+        if store.isPremium { return "All piano sounds, studio tools, and WAV export unlocked" }
         if let price = store.localizedPrice { return "One-time purchase · \(price)" }
-        return "Ad-free playing and two more piano sounds"
+        return "Two more piano sounds, advanced recording tools, and lossless WAV export"
     }
 }

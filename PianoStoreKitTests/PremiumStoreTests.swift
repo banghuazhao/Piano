@@ -12,6 +12,8 @@ final class PremiumStoreTests: XCTestCase {
         let store = PremiumStore()
         await store.refreshEntitlements()
         XCTAssertTrue(store.hasDeterminedEntitlement)
+        store.startObservingTransactions()
+        store.startObservingTransactions()
         await store.prepare()
 
         _ = try await session.buyProduct(identifier: PremiumStore.productID)
@@ -104,6 +106,116 @@ final class PremiumStoreTests: XCTestCase {
         XCTAssertTrue(session.allTransactions().isEmpty)
     }
 
+    @MainActor
+    func testConcurrentProductLoadAndPurchaseShareOneRequest() async throws {
+        let session = try makeSession()
+        session.clearTransactions()
+        let gate = ProductLoadGate()
+        let store = PremiumStore(productsForSale: {
+            await gate.waitUntilReleased()
+            return try await Product.products(for: [PremiumStore.productID])
+        })
+        await store.prepare()
+        XCTAssertFalse(store.isPremium)
+
+        let initialLoad = Task { await store.loadProduct() }
+        await gate.waitUntilStarted()
+        XCTAssertTrue(store.isLoadingProduct)
+
+        let purchaseTask = Task { await store.purchase() }
+        for _ in 0..<100 {
+            if store.isPurchasing { break }
+            await Task.yield()
+        }
+        guard store.isPurchasing else {
+            gate.release()
+            await initialLoad.value
+            _ = await purchaseTask.value
+            return XCTFail("Purchase should claim the operation before waiting for StoreKit")
+        }
+
+        let duplicatePurchase = await store.purchase()
+        let overlappingRestore = await store.restorePurchases()
+
+        gate.release()
+        await initialLoad.value
+        let result = await purchaseTask.value
+        guard case .failed = duplicatePurchase else {
+            return XCTFail("A second purchase must not start while the first is in progress")
+        }
+        guard case .failed = overlappingRestore else {
+            return XCTFail("Restore must not start while a purchase is in progress")
+        }
+        guard case .purchased = result else {
+            return XCTFail("A purchase sharing a product load should succeed, received \(String(describing: result))")
+        }
+        XCTAssertEqual(gate.callCount, 1, "Concurrent callers should share one product request")
+        XCTAssertNotNil(store.localizedPrice)
+        XCTAssertTrue(store.isPremium)
+    }
+
+    @MainActor
+    func testVerifiedPremiumTransactionControlsAdvancedRecordingTools() async throws {
+        let session = try makeSession()
+        session.clearTransactions()
+        let store = PremiumStore()
+        await store.prepare()
+        await waitForEntitlement(false, in: store)
+
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("PianoFlowPremiumGate-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let studio = PerformanceStudio(
+            libraryURL: directory.appendingPathComponent("performances.json"),
+            hasPremiumAccess: { store.isPremium }
+        )
+        let take = PerformanceTake(
+            id: UUID(), createdAt: Date(), duration: 0.6,
+            events: [
+                PerformanceEvent(note: 60, time: 0.05, isNoteOn: true, velocity: 80),
+                PerformanceEvent(note: 60, time: 0.35, isNoteOn: false)
+            ]
+        )
+        XCTAssertTrue(take.isValid)
+        let advanced = PerformancePlaybackOptions(rate: 1.5)
+
+        studio.play(take, options: advanced, noteOn: { _, _ in },
+                    noteOff: { _ in }, sustain: { _ in })
+        XCTAssertNil(studio.playingTakeID, "Free users must not start speed-controlled playback")
+        XCTAssertNil(studio.saveExcerpt(of: take, from: 0, to: 0.5),
+                     "Free users must not save a selected section")
+        XCTAssertTrue(studio.takes.isEmpty)
+
+        let purchase = await store.purchase()
+        guard case .purchased = purchase else {
+            return XCTFail("Expected verified Premium purchase, received \(String(describing: purchase))")
+        }
+        await waitForEntitlement(true, in: store)
+        studio.lastError = nil
+        studio.play(take, options: advanced, noteOn: { _, _ in },
+                    noteOff: { _ in }, sustain: { _ in })
+        XCTAssertEqual(studio.playingTakeID, take.id,
+                       "Verified Premium should permit advanced playback")
+        studio.stopPlayback()
+        let savedSection = studio.saveExcerpt(of: take, from: 0, to: 0.5)
+        XCTAssertNotNil(savedSection, "Verified Premium should permit section saving")
+        XCTAssertEqual(studio.takes.count, 1)
+
+        let transaction = try XCTUnwrap(session.allTransactions().first {
+            $0.productIdentifier == PremiumStore.productID
+        })
+        try session.refundTransaction(identifier: transaction.identifier)
+        await waitForEntitlement(false, in: store)
+        studio.lastError = nil
+        studio.play(take, options: advanced, noteOn: { _, _ in },
+                    noteOff: { _ in }, sustain: { _ in })
+        XCTAssertNil(studio.playingTakeID, "Refund must relock advanced playback")
+        XCTAssertNil(studio.saveExcerpt(of: take, from: 0, to: 0.5),
+                     "Refund must relock new section saves")
+        XCTAssertEqual(studio.takes.count, 1,
+                       "Refund must not remove a section saved while Premium was active")
+    }
+
     private func makeSession() throws -> SKTestSession {
         let configuration = try XCTUnwrap(
             Bundle(for: Self.self).url(forResource: "PianoFlow", withExtension: "storekit"),
@@ -133,5 +245,34 @@ final class PremiumStoreTests: XCTestCase {
             try? await Task.sleep(for: .milliseconds(100))
         }
         XCTFail("Transaction listener did not update isPremium to \(expected)")
+    }
+}
+
+@MainActor
+private final class ProductLoadGate {
+    private var hasStarted = false
+    private var isReleased = false
+    private var startWaiters: [CheckedContinuation<Void, Never>] = []
+    private var releaseWaiters: [CheckedContinuation<Void, Never>] = []
+    private(set) var callCount = 0
+
+    func waitUntilReleased() async {
+        callCount += 1
+        hasStarted = true
+        startWaiters.forEach { $0.resume() }
+        startWaiters.removeAll()
+        guard !isReleased else { return }
+        await withCheckedContinuation { releaseWaiters.append($0) }
+    }
+
+    func waitUntilStarted() async {
+        guard !hasStarted else { return }
+        await withCheckedContinuation { startWaiters.append($0) }
+    }
+
+    func release() {
+        isReleased = true
+        releaseWaiters.forEach { $0.resume() }
+        releaseWaiters.removeAll()
     }
 }

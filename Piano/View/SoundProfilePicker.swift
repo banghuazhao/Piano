@@ -66,7 +66,7 @@ struct SoundProfilePicker: View {
         .sheet(isPresented: $showingPremium, onDismiss: {
             if !store.isPremium { requestedProfile = nil }
         }) {
-            PremiumView()
+            PremiumView(feature: .pianoSounds)
         }
         .onChange(of: store.isPremium) { _, isPremium in
             if isPremium, let requestedProfile {
@@ -76,7 +76,9 @@ struct SoundProfilePicker: View {
                 selection = .concert
             }
         }
-        .task { await store.prepare() }
+        .task {
+            await store.prepare()
+        }
     }
 
     private func select(_ profile: PianoSoundProfile) {

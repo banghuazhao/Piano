@@ -1,0 +1,11 @@
+{
+  "productID": "com.appsbay.PianoFlow.premium",
+  "type": "Non-Consumable",
+  "referenceName": "PianoFlow Premium",
+  "locale": "en-US",
+  "displayName": "PianoFlow Premium",
+  "description": "Ad-free piano, studio tools and WAV export.",
+  "reviewNotes": "Open Settings > PianoFlow Premium. The one-time purchase removes banner and app-open ads, unlocks Warm Studio and Bright Hall sounds, and enables advanced recording playback (speed, loops, selected sections), saving trimmed copies, and lossless WAV export. Record a short take, open Saved performances > Tools, and select a Premium control to see a contextual upgrade. Restore purchases is available on the Premium screen. Basic recording/replay, MIDI sharing, guided practice, and full-take Concert M4A export do not require Premium.",
+  "productionPrice": null,
+  "priceNote": "Choose the production price in App Store Connect. The local StoreKit fixture price does not configure App Store pricing."
+}

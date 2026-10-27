@@ -73,7 +73,7 @@ struct RecordingChecks {
             .appendingPathComponent("PianoFlowRecordingChecks-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: directory) }
         let libraryURL = directory.appendingPathComponent("performances.json")
-        let studio = PerformanceStudio(libraryURL: libraryURL)
+        let studio = PerformanceStudio(libraryURL: libraryURL, hasPremiumAccess: { true })
         studio.beginRecording(heldNotes: [60], heldVelocities: [60: 71], sustain: true)
         studio.capture(note: 60, isNoteOn: false)
         guard let recorded = studio.finishRecording() else { fatalError("Recording failed") }
@@ -145,6 +145,84 @@ struct RecordingChecks {
         studio.stopPlayback()
         expect(loopCount >= 2 && studio.playingTakeID == nil, "Loop must repeat and stop")
 
+        var loopEntitled = true
+        let revocableStudio = PerformanceStudio(
+            libraryURL: directory.appendingPathComponent("revocable.json"),
+            hasPremiumAccess: { loopEntitled }
+        )
+        var revocableOnsets = 0
+        var revocableReleases = 0
+        revocableStudio.play(shortLoop, options: PerformancePlaybackOptions(loop: true),
+                             noteOn: { _, _ in revocableOnsets += 1 },
+                             noteOff: { _ in revocableReleases += 1 }, sustain: { _ in })
+        try await Task.sleep(nanoseconds: 60_000_000)
+        expect(revocableOnsets >= 1, "Premium loop must start while entitled")
+        loopEntitled = false
+        try await Task.sleep(nanoseconds: 250_000_000)
+        expect(revocableStudio.playingTakeID == nil && revocableReleases >= revocableOnsets,
+               "An active premium loop must stop and release notes after entitlement loss")
+        let onsetsAfterRevocation = revocableOnsets
+        try await Task.sleep(nanoseconds: 140_000_000)
+        expect(revocableOnsets == onsetsAfterRevocation,
+               "A revoked loop must not schedule another note")
+
+        let freeURL = directory.appendingPathComponent("free-performances.json")
+        let freeStudio = PerformanceStudio(libraryURL: freeURL, hasPremiumAccess: { false })
+        freeStudio.play(timed, noteOn: { _, _ in }, noteOff: { _ in }, sustain: { _ in })
+        expect(freeStudio.playingTakeID == timed.id, "Full-speed replay must remain free")
+        let advancedOptions: [PerformancePlaybackOptions] = [
+            .init(rate: 1.5), .init(loop: true), .init(region: 0...0.3)
+        ]
+        for options in advancedOptions {
+            freeStudio.lastError = nil
+            freeStudio.play(edited, options: options,
+                            noteOn: { _, _ in }, noteOff: { _ in }, sustain: { _ in })
+            expect(freeStudio.playingTakeID == timed.id,
+                   "Denied advanced playback must not replace a playing take")
+            expect(freeStudio.lastError?.contains("Premium") == true,
+                   "Speed, loop, and selected sections must require Premium")
+        }
+        freeStudio.stopPlayback()
+        expect(freeStudio.saveExcerpt(of: edited, from: 0.3, to: 0.6) == nil
+               && freeStudio.takes.isEmpty && !FileManager.default.fileExists(atPath: freeURL.path),
+               "A free account must not save an excerpt or change its library")
+
+        freeStudio.beginRecording(heldNotes: [60])
+        guard let freeTake = freeStudio.finishRecording() else {
+            fatalError("Basic recording must remain free")
+        }
+        expect(freeStudio.rename(freeTake, to: "Free take"), "Renaming must remain free")
+        if let midiURL = freeStudio.midiFileURL(for: freeTake) {
+            expect(FileManager.default.fileExists(atPath: midiURL.path), "MIDI sharing must remain free")
+            try? FileManager.default.removeItem(at: midiURL)
+        } else {
+            fatalError("MIDI sharing must remain free")
+        }
+
+        for (format, profile, options) in [
+            (RecordingAudioFormat.wav, PianoSoundProfile.concert, PerformancePlaybackOptions()),
+            (.m4a, .warmStudio, .init()),
+            (.m4a, .concert, .init(rate: 1.5)),
+            (.m4a, .concert, .init(loop: true)),
+            (.m4a, .concert, .init(region: 0...0.3))
+        ] {
+            freeStudio.lastError = nil
+            let url = await freeStudio.audioFileURL(
+                for: edited, format: format, profile: profile, options: options
+            )
+            expect(url == nil && freeStudio.lastError?.contains("Premium") == true,
+                   "Protected audio export must be denied before rendering")
+        }
+        freeStudio.lastError = nil
+        let freeAudioURL = await freeStudio.audioFileURL(
+            for: edited, format: .m4a, profile: .concert
+        )
+        expect(freeAudioURL != nil || freeStudio.lastError?.contains("Premium") == false,
+               "Full-speed Concert M4A must not be behind the Premium gate")
+        if let freeAudioURL { try? FileManager.default.removeItem(at: freeAudioURL) }
+        freeStudio.delete(freeTake)
+        expect(freeStudio.takes.isEmpty, "Deleting a take must remain free")
+
         let heldLoop = PerformanceTake(
             id: UUID(), createdAt: Date(), duration: 1,
             events: [
@@ -153,7 +231,8 @@ struct RecordingChecks {
             ]
         )
         var transientStudio: PerformanceStudio? = PerformanceStudio(
-            libraryURL: directory.appendingPathComponent("transient.json")
+            libraryURL: directory.appendingPathComponent("transient.json"),
+            hasPremiumAccess: { true }
         )
         weak let weakStudio = transientStudio
         var transientOnsets = 0

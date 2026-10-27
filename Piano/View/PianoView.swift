@@ -157,7 +157,11 @@ struct PianoView: View {
             if phase != .active { endActiveSession() }
         }
         .onChange(of: soundProfileRaw) { _, _ in applySoundProfile() }
-        .onChange(of: premium.isPremium) { _, _ in applySoundProfile() }
+        .onChange(of: premium.isPremium) { _, isPremium in
+            applySoundProfile()
+            // A refund can arrive after the recording tools sheet has closed.
+            if !isPremium { stopPlayback() }
+        }
         .onChange(of: premium.hasDeterminedEntitlement) { _, _ in applySoundProfile() }
         .onChange(of: practice.isActive) { _, active in
             if active {

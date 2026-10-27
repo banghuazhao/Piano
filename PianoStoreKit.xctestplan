@@ -8,6 +8,12 @@
     }
   ],
   "defaultOptions" : {
+    "environmentVariableEntries" : [
+      {
+        "key" : "PIANOFLOW_STOREKIT_TESTS",
+        "value" : "1"
+      }
+    ],
     "storeKitConfiguration" : {
       "identifier" : "PianoFlow.storekit"
     },
