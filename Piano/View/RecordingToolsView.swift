@@ -160,6 +160,7 @@ struct RecordingToolsView: View {
         }
         .onDisappear { invalidateExport() }
         .task {
+            guard !PianoRuntimeEnvironment.isUITesting else { return }
             await premium.prepare()
         }
     }

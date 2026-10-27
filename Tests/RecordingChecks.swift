@@ -95,8 +95,24 @@ struct RecordingChecks {
             libraryURL: blockedParent.appendingPathComponent("performances.json")
         )
         failingStudio.beginRecording(heldNotes: [64])
-        expect(failingStudio.finishRecording() == nil && failingStudio.takes.isEmpty,
-               "Failed write must not display an unsaved take")
+        expect(failingStudio.finishRecording() == nil && failingStudio.takes.count == 1,
+               "Failed write must keep the captured take available for recovery")
+        let retainedTake = failingStudio.takes[0]
+        expect(failingStudio.hasUnsavedTakes && failingStudio.unsavedTakeIDs.contains(retainedTake.id),
+               "Retained takes must be clearly marked as unsaved")
+        expect(retainedTake.isValid && retainedTake.events.last?.isNoteOn == false,
+               "A failed save must still close held notes in the recoverable take")
+        expect(failingStudio.midiFileURL(for: retainedTake) != nil,
+               "An unsaved take must remain exportable")
+        expect(!failingStudio.retrySavingTakes() && failingStudio.hasUnsavedTakes,
+               "Failed retry must retain the take and its unsaved status")
+        try FileManager.default.removeItem(at: blockedParent)
+        expect(failingStudio.retrySavingTakes() && !failingStudio.hasUnsavedTakes,
+               "Retry must save retained takes when storage becomes available")
+        expect(failingStudio.lastError == nil, "Successful recovery must clear its save error")
+        expect(PerformanceStudio(libraryURL: blockedParent.appendingPathComponent("performances.json"))
+            .takes.first?.id == retainedTake.id,
+               "A recovered take must survive relaunch without duplicating it")
 
         let damagedURL = directory.appendingPathComponent("damaged.json")
         let originalBytes = Data("not valid JSON".utf8)
@@ -113,6 +129,29 @@ struct RecordingChecks {
         let preservedBytes = try backupURLs.contains { try Data(contentsOf: $0) == originalBytes }
         expect(preservedBytes,
                "Corrupt library bytes must survive a subsequent recording")
+
+        let protectedDirectory = directory.appendingPathComponent("protected", isDirectory: true)
+        try FileManager.default.createDirectory(at: protectedDirectory, withIntermediateDirectories: true)
+        let protectedURL = protectedDirectory.appendingPathComponent("performances.json")
+        try originalBytes.write(to: protectedURL)
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: protectedDirectory.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: protectedDirectory.path) }
+        let blockedRecoveryStudio = PerformanceStudio(libraryURL: protectedURL)
+        blockedRecoveryStudio.beginRecording(heldNotes: [67])
+        expect(blockedRecoveryStudio.finishRecording() == nil && blockedRecoveryStudio.hasUnsavedTakes,
+               "A failed recovery backup must retain new recordings without overwriting the original")
+        let protectedBytes = try Data(contentsOf: protectedURL)
+        expect(protectedBytes == originalBytes,
+               "Failed recovery must preserve the damaged library bytes")
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: protectedDirectory.path)
+        expect(blockedRecoveryStudio.retrySavingTakes() && !blockedRecoveryStudio.hasUnsavedTakes,
+               "Retry must repeat a previously blocked backup when storage becomes writable")
+        let recoveredBackups = try FileManager.default.contentsOfDirectory(
+            at: protectedDirectory, includingPropertiesForKeys: nil
+        ).filter { $0.lastPathComponent.hasPrefix("performances.recovery-") }
+        let backupRetainsOriginal = try recoveredBackups.contains { try Data(contentsOf: $0) == originalBytes }
+        expect(backupRetainsOriginal,
+               "Retry must preserve the original damaged bytes before saving the retained take")
 
         let timed = PerformanceTake(
             id: UUID(), createdAt: Date(), duration: 0.4,

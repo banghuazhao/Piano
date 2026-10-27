@@ -14,6 +14,7 @@ class PianoViewModel {
     /// Normalized scroll position across the full keyboard [0, 1]
     var scrollPosition: Double = 0.5
     var showSettings = false
+    private(set) var inputResetGeneration = UUID()
     private(set) var sustainEnabled = false
     private(set) var midiSustainEnabled = false
     private(set) var masterVolume = 0.85
@@ -58,6 +59,7 @@ class PianoViewModel {
             self?.midiVelocities.removeAll()
             self?.sustainEnabled = false
             self?.midiSustainEnabled = false
+            self?.inputResetGeneration = UUID()
             self?.onAudioReset?()
         }
     }
@@ -178,6 +180,9 @@ class PianoViewModel {
         midiVelocities.removeAll()
         midiSustainEnabled = false
         audioEngine.stopAllNotes()
+        // Recreate the touch surface so an interrupted finger cannot suppress
+        // the next press of the same key through its old touch count.
+        inputResetGeneration = UUID()
     }
     
     // MARK: - Scrolling

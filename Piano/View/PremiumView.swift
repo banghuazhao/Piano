@@ -99,9 +99,11 @@ struct PremiumView: View {
         .preferredColorScheme(.dark)
         .presentationDragIndicator(.visible)
         .task {
+            guard !PianoRuntimeEnvironment.isUITesting else { return }
             await store.prepare()
             await store.loadProduct()
         }
+        .pianoUITestTextSize()
     }
 
     @ViewBuilder

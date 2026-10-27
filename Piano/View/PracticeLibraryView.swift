@@ -54,6 +54,7 @@ struct PracticeLibraryView: View {
                 .padding(.vertical, 24)
             }
             .background(PianoTheme.background.ignoresSafeArea())
+            .accessibilityIdentifier("practice.library.scroll")
             .navigationBarTitleDisplayMode(.inline)
             .pianoNavigationChrome()
             .toolbar {
@@ -226,6 +227,7 @@ struct PracticeLibraryView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Practice \(exercise.title)")
+        .accessibilityIdentifier("practice.exercise.\(exercise.id)")
         .accessibilityValue("\(exercise.difficulty.rawValue), \(exercise.steps.count) steps")
         .accessibilityHint("Choose hands, tempo, and practice mode")
     }

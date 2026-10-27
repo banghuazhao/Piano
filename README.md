@@ -101,6 +101,12 @@ Run `bash Scripts/check-features.sh` to check rhythm scoring, practice progress,
 
 Release screenshots, headline copy, Header/Search Results artwork, and regeneration instructions live in [StoreAssets](StoreAssets/README.md). The iPhone Duo uses the available window geometry for its inner and outer displays; iOS 17.6 remains the minimum supported system.
 
+Use **More → Stop all sound** to finish an active take safely, stop playback and the metronome, pause practice, and clear notes and sustain. This recovery action is available at every toolbar width.
+
+If a recording cannot be saved, a visible warning opens the retained take for **Retry save** or export. Unsaved takes remain available for the current session; recover them before closing the app.
+
+Run `Scripts/check-ui-smoke.sh <dedicated-simulator-UDID> all` for automated recording, replay, practice, settings, recovery, rotation, and adaptive-layout UI checks at regular and largest app text sizes. See [UI smoke tests](Docs/UISmokeTests.md) for isolated test storage, results, and Duo fold-testing limits.
+
 MIDI import supports Standard MIDI format 0 and 1 with PPQN timing. Percussion and notes outside A0–C8 are skipped and reported. Format 2 and SMPTE timing receive a clear unsupported-file error. Practice uses one selected tempo and meter; files with tempo or meter changes disclose that simplification. The importer limits file size, note count, song duration, and library storage to keep malformed or unusually large files from overwhelming the instrument.
 
 Warm Studio and Bright Hall apply EQ and reverb to the bundled piano samples. WAV/M4A export renders one selected pass at the chosen speed and preserves the sound profile; a playback loop does not create an endless export.

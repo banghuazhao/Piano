@@ -40,6 +40,7 @@ struct SettingsView: View {
                             symbol: "textformat",
                             isOn: $showKeyDisplayNames
                         )
+                        .accessibilityIdentifier("settings.keyLabels")
 
                         if showKeyDisplayNames {
                             Divider().overlay(PianoTheme.divider)
@@ -96,6 +97,7 @@ struct SettingsView: View {
                 .padding(.vertical, 20)
             }
             .background(PianoTheme.background.ignoresSafeArea())
+            .accessibilityIdentifier("settings.scroll")
             .navigationBarTitleDisplayMode(.inline)
             .pianoNavigationChrome()
             .toolbar {

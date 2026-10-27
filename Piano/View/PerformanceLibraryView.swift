@@ -47,6 +47,26 @@ struct PerformanceLibraryView: View {
                     }
                     .accessibilityElement(children: .combine)
 
+                    if studio.hasUnsavedTakes {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Label("A performance needs saving", systemImage: "exclamationmark.triangle")
+                                .font(.headline)
+                            Text("Unsaved takes are available for this session. Retry saving or export them before closing PianoFlow.")
+                                .font(.subheadline)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Button("Retry save", systemImage: "arrow.clockwise") {
+                                studio.retrySavingTakes()
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .frame(minHeight: 44)
+                            .accessibilityIdentifier("performance.retrySave")
+                        }
+                        .foregroundStyle(PianoTheme.ivory)
+                        .padding(18)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(PianoTheme.brass.opacity(0.12), in: RoundedRectangle(cornerRadius: 16))
+                    }
+
                     if studio.takes.isEmpty {
                         ContentUnavailableView(
                             "No performances yet",
@@ -57,7 +77,7 @@ struct PerformanceLibraryView: View {
                         .padding(.vertical, 28)
                     } else {
                         HStack {
-                            Text("SAVED TAKES")
+                            Text(studio.hasUnsavedTakes ? "YOUR TAKES" : "SAVED TAKES")
                                 .font(.caption.bold())
                                 .tracking(2)
                                 .foregroundStyle(PianoTheme.secondary)
@@ -70,7 +90,8 @@ struct PerformanceLibraryView: View {
                                 .padding(.horizontal, 11)
                                 .padding(.vertical, 5)
                                 .background(PianoTheme.brass.opacity(0.12), in: Capsule())
-                                .accessibilityLabel(studio.takes.count == 1 ? "1 saved performance" : "\(studio.takes.count) saved performances")
+                                .accessibilityLabel(performanceCountLabel)
+                                .accessibilityIdentifier("performance.count")
                         }
 
                         LazyVStack(spacing: 14) {
@@ -84,7 +105,9 @@ struct PerformanceLibraryView: View {
                             }
                         }
 
-                        Text("Your performances are saved on this device.")
+                        Text(studio.hasUnsavedTakes
+                             ? "Takes marked as unsaved still need to be saved or exported."
+                             : "Your performances are saved on this device.")
                             .font(.footnote)
                             .foregroundStyle(PianoTheme.secondary)
                             .frame(maxWidth: .infinity)
@@ -96,6 +119,7 @@ struct PerformanceLibraryView: View {
                 .padding(.vertical, 20)
             }
             .background(PianoTheme.background.ignoresSafeArea())
+            .accessibilityIdentifier("performance.library.scroll")
             .navigationBarTitleDisplayMode(.inline)
             .pianoNavigationChrome()
             .toolbar {
@@ -124,5 +148,12 @@ struct PerformanceLibraryView: View {
         } message: {
             Text(studio.lastError ?? "Please try again.")
         }
+    }
+
+    private var performanceCountLabel: String {
+        let savedCount = studio.takes.count - studio.unsavedTakeIDs.count
+        let saved = savedCount == 1 ? "1 saved performance" : "\(savedCount) saved performances"
+        guard studio.hasUnsavedTakes else { return saved }
+        return "\(saved), \(studio.unsavedTakeIDs.count) unsaved"
     }
 }

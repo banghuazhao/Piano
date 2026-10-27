@@ -29,6 +29,11 @@ struct MIDIInputChecks {
         _ = state.receive(message(0xB, 64, 127), source: 3)
         precondition(state.reset() == [.noteOff(65), .sustain(false)])
         precondition(state.receive(message(8, 65, 0), source: 3).isEmpty)
+        precondition(state.receive(message(9, 65, 72), source: 3) == [.noteOn(65, velocity: 72)])
+        precondition(state.receive(message(8, 65, 0), source: 3) == [.noteOff(65)])
+        precondition(state.receive(message(0xB, 64, 127), source: 3) == [.sustain(true)])
+        precondition(state.reset() == [.sustain(false)])
+        precondition(state.receive(message(0xB, 64, 127), source: 3) == [.sustain(true)])
         print("MIDI input checks passed")
     }
 }

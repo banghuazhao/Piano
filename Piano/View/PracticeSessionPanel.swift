@@ -33,6 +33,7 @@ struct PracticeSessionPanel: View {
                         .font(.subheadline.monospacedDigit().bold())
                         .foregroundStyle(PianoTheme.brass)
                         .accessibilityLabel("\(session.completedSteps) of \(session.totalSteps) steps completed")
+                        .accessibilityIdentifier("practice.completedSteps")
 
                     if session.isActive {
                         Button(session.isPaused ? "Resume practice" : "Pause practice",
@@ -62,6 +63,7 @@ struct PracticeSessionPanel: View {
                     .pianoControlSurface(cornerRadius: 9, interactive: true)
                     .contentShape(Rectangle())
                     .accessibilityHint("Closes guided practice")
+                    .accessibilityIdentifier("practice.exit")
                 }
                 .pianoGlassContainer()
                 .buttonStyle(.plain)
@@ -90,6 +92,7 @@ struct PracticeSessionPanel: View {
                     .tint(PianoTheme.brass)
                     .accessibilityLabel("Exercise progress")
                     .accessibilityValue("\(session.completedSteps) of \(session.totalSteps) steps")
+                    .accessibilityIdentifier("practice.progress")
             }
             .padding(.horizontal, 14)
             .padding(.vertical, verticalSizeClass == .compact ? 6 : 10)

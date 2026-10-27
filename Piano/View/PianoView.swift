@@ -3,10 +3,12 @@ import UIKit
 
 struct PianoView: View {
     @State private var viewModel = PianoViewModel()
-    @State private var studio = PerformanceStudio()
+    @State private var studio = PerformanceStudio(libraryURL: PianoRuntimeEnvironment.performanceLibraryURL)
     @State private var metronome = MetronomeService()
-    @State private var practice = PracticeSession()
-    @State private var songs = ImportedSongLibrary.shared
+    @State private var practice = PracticeSession(defaults: PianoRuntimeEnvironment.defaults)
+    @State private var songs = PianoRuntimeEnvironment.isUITesting
+        ? ImportedSongLibrary(storageURL: PianoRuntimeEnvironment.importedSongsURL)
+        : ImportedSongLibrary.shared
     @State private var midi = MIDIInputService()
     @State private var premium = PremiumStore.shared
     @State private var scrollAction: ((AnyHashable, UnitPoint?) -> Void)?
@@ -50,8 +52,31 @@ struct PianoView: View {
                         if practice.options.mode == .rhythm { practice.pause() }
                         showTempo = true
                     },
-                    onSettings: { practice.pause(); viewModel.showSettings = true }
+                    onSettings: { practice.pause(); viewModel.showSettings = true },
+                    onStopAllSound: stopAllSound
                 )
+
+                if studio.hasUnsavedTakes {
+                    HStack(spacing: 12) {
+                        Label("A take needs saving", systemImage: "exclamationmark.triangle.fill")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(PianoTheme.ivory)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Spacer(minLength: 0)
+
+                        Button("Review") { showLibrary = true }
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(PianoTheme.brass)
+                            .frame(minHeight: 44)
+                            .accessibilityIdentifier("piano.reviewUnsavedTake")
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 4)
+                    .background(PianoTheme.felt)
+                    .accessibilityIdentifier("piano.unsavedTakeWarning")
+                }
 
                 if practice.exercise != nil {
                     PracticeSessionPanel(session: practice)
@@ -125,18 +150,23 @@ struct PianoView: View {
         .preferredColorScheme(.dark)
         .sheet(isPresented: $viewModel.showSettings) {
             SettingsView(midi: midi)
+                .pianoUITestTextSize()
         }
         .sheet(isPresented: $showLibrary) {
             PerformanceLibraryView(studio: studio, onPlay: playTake, onStop: stopPlayback)
+                .pianoUITestTextSize()
         }
         .sheet(isPresented: $showPractice) {
             PracticeLibraryView(session: practice, library: songs)
+                .pianoUITestTextSize()
         }
         .popover(isPresented: $showTempo) {
             if practice.exercise != nil, practice.options.mode == .rhythm {
                 PracticeTempoView(session: practice)
+                    .pianoUITestTextSize()
             } else {
                 TempoPopoverView(metronome: metronome)
+                    .pianoUITestTextSize()
             }
         }
         .onChange(of: navigatorPosition) { _, position in
@@ -234,6 +264,7 @@ struct PianoView: View {
                         onPress: { _ = press($0) },
                         onRelease: release
                     )
+                    .id(viewModel.inputResetGeneration)
                 }
             }
             .scrollIndicators(.hidden)
@@ -387,12 +418,20 @@ struct PianoView: View {
         if studio.isRecording || studio.playingTakeID != nil || metronome.isRunning || practice.isActive {
             PianoSessionActivity.markPlayed()
         }
-        if studio.isRecording { studio.finishRecording() }
+        stopAllSound()
+    }
+
+    private func stopAllSound() {
+        // Silence every engine before the recording's synchronous library write.
+        // Studio still owns its held notes and closes them when it saves the take.
         stopPlayback()
-        practice.pause()
         metronome.stop()
         viewModel.stopAllNotes()
+        practice.pause()
+        if studio.isRecording { studio.finishRecording() }
+        midi.resetHeldNotes()
         for note: UInt8 in 21...108 { practice.noteOff(note) }
+        gestureKeyWidth = nil
     }
 
     private func applySoundProfile() {
@@ -423,9 +462,10 @@ struct PianoView: View {
     }
 
     private func configureMIDI() {
-        midi.onEvent = { [weak viewModel, weak studio, weak practice] event in
-            guard let viewModel, let studio, let practice else { return }
-            Self.handleMIDI(event, viewModel: viewModel, studio: studio, practice: practice)
+        midi.onEvent = { [weak viewModel, weak studio, weak practice, weak metronome] event in
+            guard let viewModel, let studio, let practice, let metronome else { return }
+            Self.handleMIDI(event, viewModel: viewModel, studio: studio,
+                            practice: practice, metronome: metronome)
         }
         viewModel.onAudioReset = { [weak midi, weak studio, weak practice, weak metronome] in
             midi?.resetHeldNotes()
@@ -449,7 +489,8 @@ struct PianoView: View {
 
     private static func handleMIDI(
         _ event: MIDIInputEvent, viewModel: PianoViewModel,
-        studio: PerformanceStudio, practice: PracticeSession
+        studio: PerformanceStudio, practice: PracticeSession,
+        metronome: MetronomeService
     ) {
         switch event {
         case let .noteOn(note, velocity):
@@ -470,10 +511,11 @@ struct PianoView: View {
                 studio.captureSustain(viewModel.recordingSustainEnabled)
             }
         case .allSoundOff:
-            if studio.isRecording { studio.finishRecording() }
             studio.stopPlayback()
-            practice.pause()
+            metronome.stop()
             viewModel.stopAllNotes()
+            practice.pause()
+            if studio.isRecording { studio.finishRecording() }
             for note: UInt8 in 21...108 { practice.noteOff(note) }
         }
     }

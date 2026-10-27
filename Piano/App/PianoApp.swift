@@ -14,6 +14,7 @@ struct PianoApp: App {
 
     @MainActor
     init() {
+        guard !PianoRuntimeEnvironment.isUITesting else { return }
 #if DEBUG && targetEnvironment(simulator)
         // App-hosted StoreKit tests attach their local catalog during startup.
         // Let the test session bind before starting this optional early listener.
@@ -25,7 +26,10 @@ struct PianoApp: App {
     var body: some Scene {
         WindowGroup {
             PianoView()
+                .defaultAppStorage(PianoRuntimeEnvironment.defaults)
+                .pianoUITestTextSize()
                 .task {
+                    guard !PianoRuntimeEnvironment.isUITesting else { return }
                     await premium.prepare()
                     if scenePhase == .active && !premium.isPremium {
                         prepareAds()
@@ -33,6 +37,7 @@ struct PianoApp: App {
                 }
                 .onChange(of: scenePhase) { _, newPhase in
                     if newPhase == .active {
+                        guard !PianoRuntimeEnvironment.isUITesting else { return }
                         activationTask?.cancel()
                         activationTask = Task {
                             let needsRefresh = premium.hasDeterminedEntitlement
@@ -68,6 +73,7 @@ struct PianoApp: App {
     }
 
     private func prepareAds() {
+        guard !PianoRuntimeEnvironment.isUITesting else { return }
         AdPrivacyManager.shared.prepareAds {
             openAd.requestAppOpenAd()
         }

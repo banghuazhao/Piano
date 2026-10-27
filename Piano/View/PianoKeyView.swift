@@ -38,6 +38,7 @@ struct PianoKeyView: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(key.displayName) piano key")
+        .accessibilityIdentifier("piano.key.\(key.midiNote)")
         .accessibilityValue(isPressed ? "Pressed" : "Released")
         .accessibilityHint(isTarget ? "Next guided practice note" : "")
         .accessibilityAddTraits(.isButton)

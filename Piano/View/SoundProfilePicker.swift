@@ -77,6 +77,7 @@ struct SoundProfilePicker: View {
             }
         }
         .task {
+            guard !PianoRuntimeEnvironment.isUITesting else { return }
             await store.prepare()
         }
     }

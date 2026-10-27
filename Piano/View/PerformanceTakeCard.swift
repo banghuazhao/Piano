@@ -49,6 +49,12 @@ struct PerformanceTakeCard: View {
                     Text(take.createdAt.formatted(date: .abbreviated, time: .shortened))
                         .font(.caption)
                         .foregroundStyle(PianoTheme.secondary)
+
+                    if studio.unsavedTakeIDs.contains(take.id) {
+                        Label("Not saved yet", systemImage: "exclamationmark.triangle")
+                            .font(.caption.bold())
+                            .foregroundStyle(PianoTheme.brass)
+                    }
                 }
 
                 Spacer(minLength: 0)
@@ -128,6 +134,7 @@ struct PerformanceTakeCard: View {
         .foregroundStyle(PianoTheme.background)
         .frame(minHeight: 44)
         .accessibilityHint(isPlaying ? "Stops this performance" : "Plays this performance")
+        .accessibilityIdentifier("performance.play")
     }
 
     private var toolsButton: some View {
@@ -138,6 +145,7 @@ struct PerformanceTakeCard: View {
         .tint(PianoTheme.ivory)
         .frame(minHeight: 44)
         .accessibilityHint("Rename, loop, trim, and export audio")
+        .accessibilityIdentifier("performance.tools")
     }
 
     @ViewBuilder

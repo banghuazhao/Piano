@@ -45,6 +45,7 @@ struct PremiumSettingsSection: View {
             PremiumView()
         }
         .task {
+            guard !PianoRuntimeEnvironment.isUITesting else { return }
             await store.prepare()
             await store.loadProduct()
         }

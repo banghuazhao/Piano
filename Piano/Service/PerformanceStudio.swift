@@ -5,9 +5,12 @@ import Observation
 @Observable
 final class PerformanceStudio {
     private(set) var takes: [PerformanceTake] = []
+    private(set) var unsavedTakeIDs: Set<UUID> = []
     private(set) var isRecording = false
     private(set) var playingTakeID: UUID?
     var lastError: String?
+
+    var hasUnsavedTakes: Bool { !unsavedTakeIDs.isEmpty }
 
     @ObservationIgnored private var recordingStartedAt: TimeInterval = 0
     @ObservationIgnored private var capturedEvents: [PerformanceEvent] = []
@@ -114,9 +117,33 @@ final class PerformanceStudio {
             return nil
         }
         let updatedTakes = [take] + takes
-        guard persistTakes(updatedTakes) else { return nil }
+        guard persistTakes(updatedTakes) else {
+            // Keep the captured performance available for playback and export.
+            // A later successful library write also saves these retained takes.
+            takes = updatedTakes
+            unsavedTakeIDs.insert(take.id)
+            lastError = "Your take could not be saved. It is kept for this session. Retry saving or export it before closing PianoFlow."
+            return nil
+        }
         takes = updatedTakes
         return take
+    }
+
+    @discardableResult
+    func retrySavingTakes() -> Bool {
+        guard hasUnsavedTakes else { return true }
+        if persistenceBlocked {
+            // Storage may have become writable since loading the damaged library.
+            // Preserve its original bytes before allowing this session to save.
+            if FileManager.default.fileExists(atPath: libraryURL.path),
+               !preserveDamagedLibrary(moveOriginal: false) {
+                return false
+            }
+            persistenceBlocked = false
+        }
+        guard persistTakes(takes) else { return false }
+        lastError = nil
+        return true
     }
 
     func play(
@@ -409,6 +436,8 @@ final class PerformanceStudio {
                 withIntermediateDirectories: true
             )
             try JSONEncoder().encode(updatedTakes).write(to: libraryURL, options: .atomic)
+            if hasUnsavedTakes { lastError = nil }
+            unsavedTakeIDs.removeAll()
             return true
         } catch {
             lastError = "The performance library could not be updated."

@@ -10,10 +10,18 @@
 		99EB850F2E7AB9460043D470 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 99EB850E2E7AB9460043D470 /* GoogleMobileAds */; };
 		A7F0B6F12F0A11EF8B000004 /* PremiumStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F0B6F12F0A11EF8B000002 /* PremiumStoreTests.swift */; };
 		A7F0B6F12F0A11EF8B000005 /* PianoFlow.storekit in Resources */ = {isa = PBXBuildFile; fileRef = A7F0B6F12F0A11EF8B000001 /* PianoFlow.storekit */; };
+		B8F00D012F0A11EF8B000003 /* PianoSmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8F00D012F0A11EF8B000001 /* PianoSmokeTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
 		A7F0B6F12F0A11EF8B000011 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9939FBD92E6931810055BF3C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9939FBE02E6931810055BF3C;
+			remoteInfo = Piano;
+		};
+		B8F00D012F0A11EF8B00000C /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 9939FBD92E6931810055BF3C /* Project object */;
 			proxyType = 1;
@@ -27,6 +35,8 @@
 		A7F0B6F12F0A11EF8B000001 /* PianoFlow.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = PianoFlow.storekit; sourceTree = "<group>"; };
 		A7F0B6F12F0A11EF8B000002 /* PremiumStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PremiumStoreTests.swift; sourceTree = "<group>"; };
 		A7F0B6F12F0A11EF8B000003 /* PianoStoreKitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PianoStoreKitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B8F00D012F0A11EF8B000001 /* PianoSmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PianoSmokeTests.swift; sourceTree = "<group>"; };
+		B8F00D012F0A11EF8B000002 /* PianoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PianoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -66,6 +76,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B8F00D012F0A11EF8B000007 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -74,6 +91,7 @@
 			children = (
 				9939FBE32E6931810055BF3C /* Piano */,
 				A7F0B6F12F0A11EF8B000006 /* PianoStoreKitTests */,
+				B8F00D012F0A11EF8B000004 /* PianoUITests */,
 				A7F0B6F12F0A11EF8B000001 /* PianoFlow.storekit */,
 				9939FBE22E6931810055BF3C /* Products */,
 			);
@@ -84,6 +102,7 @@
 			children = (
 				9939FBE12E6931810055BF3C /* Piano.app */,
 				A7F0B6F12F0A11EF8B000003 /* PianoStoreKitTests.xctest */,
+				B8F00D012F0A11EF8B000002 /* PianoUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -94,6 +113,14 @@
 				A7F0B6F12F0A11EF8B000002 /* PremiumStoreTests.swift */,
 			);
 			path = PianoStoreKitTests;
+			sourceTree = "<group>";
+		};
+		B8F00D012F0A11EF8B000004 /* PianoUITests */ = {
+			isa = PBXGroup;
+			children = (
+				B8F00D012F0A11EF8B000001 /* PianoSmokeTests.swift */,
+			);
+			path = PianoUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -140,6 +167,24 @@
 			productReference = A7F0B6F12F0A11EF8B000003 /* PianoStoreKitTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		B8F00D012F0A11EF8B000005 /* PianoUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B8F00D012F0A11EF8B00000B /* Build configuration list for PBXNativeTarget "PianoUITests" */;
+			buildPhases = (
+				B8F00D012F0A11EF8B000006 /* Sources */,
+				B8F00D012F0A11EF8B000007 /* Frameworks */,
+				B8F00D012F0A11EF8B000008 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B8F00D012F0A11EF8B00000D /* PBXTargetDependency */,
+			);
+			name = PianoUITests;
+			productName = PianoUITests;
+			productReference = B8F00D012F0A11EF8B000002 /* PianoUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -154,6 +199,10 @@
 						CreatedOnToolsVersion = 16.4;
 					};
 					A7F0B6F12F0A11EF8B00000A = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = 9939FBE02E6931810055BF3C;
+					};
+					B8F00D012F0A11EF8B000005 = {
 						CreatedOnToolsVersion = 16.4;
 						TestTargetID = 9939FBE02E6931810055BF3C;
 					};
@@ -178,6 +227,7 @@
 			targets = (
 				9939FBE02E6931810055BF3C /* Piano */,
 				A7F0B6F12F0A11EF8B00000A /* PianoStoreKitTests */,
+				B8F00D012F0A11EF8B000005 /* PianoUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -195,6 +245,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				A7F0B6F12F0A11EF8B000005 /* PianoFlow.storekit in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B8F00D012F0A11EF8B000008 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -216,6 +273,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B8F00D012F0A11EF8B000006 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B8F00D012F0A11EF8B000003 /* PianoSmokeTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -223,6 +288,11 @@
 			isa = PBXTargetDependency;
 			target = 9939FBE02E6931810055BF3C /* Piano */;
 			targetProxy = A7F0B6F12F0A11EF8B000011 /* PBXContainerItemProxy */;
+		};
+		B8F00D012F0A11EF8B00000D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9939FBE02E6931810055BF3C /* Piano */;
+			targetProxy = B8F00D012F0A11EF8B00000C /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -462,6 +532,48 @@
 			};
 			name = Release;
 		};
+		B8F00D012F0A11EF8B000009 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = E6968P466E;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.appsbay.PianoFlow.UITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Piano;
+			};
+			name = Debug;
+		};
+		B8F00D012F0A11EF8B00000A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = E6968P466E;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.appsbay.PianoFlow.UITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Piano;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -488,6 +600,15 @@
 			buildConfigurations = (
 				A7F0B6F12F0A11EF8B00000E /* Debug */,
 				A7F0B6F12F0A11EF8B00000F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B8F00D012F0A11EF8B00000B /* Build configuration list for PBXNativeTarget "PianoUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B8F00D012F0A11EF8B000009 /* Debug */,
+				B8F00D012F0A11EF8B00000A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

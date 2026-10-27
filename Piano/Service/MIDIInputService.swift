@@ -12,7 +12,7 @@ final class MIDIInputService {
 
     var isEnabled: Bool {
         didSet {
-            UserDefaults.standard.set(isEnabled, forKey: "midiInputEnabled")
+            PianoRuntimeEnvironment.defaults.set(isEnabled, forKey: "midiInputEnabled")
             refreshSources()
         }
     }
@@ -26,7 +26,7 @@ final class MIDIInputService {
     @ObservationIgnored private var isActive = true
 
     init() {
-        isEnabled = UserDefaults.standard.object(forKey: "midiInputEnabled") as? Bool ?? true
+        isEnabled = PianoRuntimeEnvironment.defaults.object(forKey: "midiInputEnabled") as? Bool ?? true
     }
 
     deinit {

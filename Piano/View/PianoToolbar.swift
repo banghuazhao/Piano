@@ -23,6 +23,7 @@ struct PianoToolbar: View {
     let onMetronome: () -> Void
     let onTempo: () -> Void
     let onSettings: () -> Void
+    let onStopAllSound: () -> Void
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
@@ -66,6 +67,7 @@ struct PianoToolbar: View {
                     isActive: isRecording,
                     activeColor: PianoTheme.recording,
                     compact: true,
+                    identifier: "piano.record",
                     action: onRecord
                 )
                 .frame(width: 44)
@@ -77,6 +79,7 @@ struct PianoToolbar: View {
                     isActive: isPlaying,
                     isEnabled: hasTake || isPlaying,
                     compact: true,
+                    identifier: "piano.play",
                     action: onPlay
                 )
                 .frame(width: 44)
@@ -140,12 +143,20 @@ struct PianoToolbar: View {
     private var moreControls: some View {
         Menu {
             Button("Guided practice", systemImage: "graduationcap", action: onPractice)
+                .accessibilityIdentifier("piano.practice")
             Button("Saved performances", systemImage: "square.stack", action: onLibrary)
+                .accessibilityIdentifier("piano.library")
             Button(sustainEnabled ? "Turn sustain off" : "Turn sustain on", systemImage: "waveform.path", action: onSustain)
+                .accessibilityIdentifier("piano.sustain")
             Button(metronomeActionTitle, systemImage: "metronome", action: onMetronome)
+                .accessibilityIdentifier("piano.metronome")
             Button("Tempo settings (\(bpm) BPM)", systemImage: "slider.horizontal.3", action: onTempo)
+                .accessibilityIdentifier("piano.tempo")
             Divider()
+            Button("Stop all sound", systemImage: "speaker.slash.fill", action: onStopAllSound)
+                .accessibilityIdentifier("piano.stopAllSound")
             Button("Settings", systemImage: "gearshape", action: onSettings)
+                .accessibilityIdentifier("piano.settings")
         } label: {
             Image(systemName: "ellipsis")
                 .font(.system(size: 19, weight: .semibold))
@@ -166,6 +177,7 @@ struct PianoToolbar: View {
         }
         .accessibilityLabel("More piano controls")
         .accessibilityValue(activeControlSummary)
+        .accessibilityIdentifier("piano.moreControls")
     }
 
     private var activeControlSummary: String {
@@ -208,6 +220,7 @@ struct PianoToolbar: View {
                 isActive: isRecording,
                 activeColor: PianoTheme.recording,
                 compact: compact,
+                identifier: "piano.record",
                 action: onRecord
             )
             control(
@@ -217,6 +230,7 @@ struct PianoToolbar: View {
                 isActive: isPlaying,
                 isEnabled: hasTake || isPlaying,
                 compact: compact,
+                identifier: "piano.play",
                 action: onPlay
             )
             control(
@@ -224,6 +238,7 @@ struct PianoToolbar: View {
                 caption: "PRACTICE",
                 symbol: "graduationcap",
                 compact: compact,
+                identifier: "piano.practice",
                 action: onPractice
             )
             control(
@@ -231,6 +246,7 @@ struct PianoToolbar: View {
                 caption: "TAKES",
                 symbol: "square.stack",
                 compact: compact,
+                identifier: "piano.library",
                 action: onLibrary
             )
 
@@ -246,6 +262,7 @@ struct PianoToolbar: View {
                 symbol: "waveform.path",
                 isActive: sustainEnabled,
                 compact: compact,
+                identifier: "piano.sustain",
                 action: onSustain
             )
             control(
@@ -254,6 +271,7 @@ struct PianoToolbar: View {
                 symbol: "metronome",
                 isActive: metronomeRunning,
                 compact: compact,
+                identifier: "piano.metronome",
                 action: onMetronome
             )
             tempoButton(compact: compact)
@@ -262,8 +280,10 @@ struct PianoToolbar: View {
                 caption: "SETTINGS",
                 symbol: "gearshape",
                 compact: compact,
+                identifier: "piano.settings",
                 action: onSettings
             )
+            moreControls
         }
         .frame(maxWidth: compact ? .infinity : nil)
     }
@@ -282,6 +302,7 @@ struct PianoToolbar: View {
         isEnabled: Bool = true,
         activeColor: Color = PianoTheme.brass,
         compact: Bool,
+        identifier: String,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
@@ -304,6 +325,7 @@ struct PianoToolbar: View {
         .disabled(!isEnabled)
         .opacity(isEnabled ? 1 : 0.38)
         .accessibilityLabel(title)
+        .accessibilityIdentifier(identifier)
         .accessibilityAddTraits(isActive ? .isSelected : [])
     }
 
@@ -324,6 +346,7 @@ struct PianoToolbar: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Tempo settings, \(bpm) beats per minute")
+        .accessibilityIdentifier("piano.tempo")
     }
 
 }
@@ -345,7 +368,8 @@ struct PianoToolbar: View {
         onSustain: {},
         onMetronome: {},
         onTempo: {},
-        onSettings: {}
+        onSettings: {},
+        onStopAllSound: {}
     )
 }
 #endif

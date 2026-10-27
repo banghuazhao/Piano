@@ -104,6 +104,7 @@ struct PracticeSetupView: View {
                         .frame(maxWidth: .infinity, minHeight: 52)
                 }
                 .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("practice.start")
                 .tint(PianoTheme.brass)
                 .foregroundStyle(PianoTheme.background)
             }
@@ -112,6 +113,7 @@ struct PracticeSetupView: View {
             .frame(maxWidth: .infinity)
         }
         .background(PianoTheme.background.ignoresSafeArea())
+        .accessibilityIdentifier("practice.setup.scroll")
         .navigationTitle("Practice setup")
         .navigationBarTitleDisplayMode(.inline)
     }

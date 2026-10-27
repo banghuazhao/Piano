@@ -1,0 +1,46 @@
+{
+  "configurations" : [
+    {
+      "id" : "BEA0BA11-D9BC-4E60-AFE7-6BE6296759F1",
+      "name" : "Regular",
+      "options" : {
+        "environmentVariableEntries" : [
+          {
+            "key" : "PIANOFLOW_UI_TEST_LARGE_TEXT",
+            "value" : "0"
+          }
+        ]
+      }
+    },
+    {
+      "id" : "D1E0A7EC-B8B8-47DF-BD01-81896C4F8C9D",
+      "name" : "Largest AX",
+      "options" : {
+        "environmentVariableEntries" : [
+          {
+            "key" : "PIANOFLOW_UI_TEST_LARGE_TEXT",
+            "value" : "1"
+          }
+        ]
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:Piano.xcodeproj",
+      "identifier" : "9939FBE02E6931810055BF3C",
+      "name" : "Piano"
+    }
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : false,
+      "target" : {
+        "containerPath" : "container:Piano.xcodeproj",
+        "identifier" : "B8F00D012F0A11EF8B000005",
+        "name" : "PianoUITests"
+      }
+    }
+  ],
+  "version" : 1
+}
