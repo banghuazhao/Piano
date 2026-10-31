@@ -14,6 +14,8 @@ PianoFlow Premium is a **one-time, non-consumable** in-app purchase. The app gra
 | Save a trimmed copy | — | Yes |
 | Lossless WAV audio export | — | Yes |
 
+The Mac Catalyst build is part of the same app record and the same purchase. Universal Purchase delivers `com.appsbay.PianoFlow.premium` to the Mac for an Apple Account that already owns it, so no second product is created. The Mac build shows no ads, so its paywall omits the ad-free row and lists only the sounds, recording tools, and lossless export. See [Mac Catalyst support](MacCatalyst.md).
+
 Locked controls open a contextual upgrade screen. A verified purchase or restore unlocks requested sounds/formats without starting playback or exporting automatically. Refunds reset paid selections and stop playback; previously saved performances remain available. Advanced operations also check access in `PerformanceStudio`: advanced playback rechecks access at each loop cycle, and protected exports refresh verified entitlements before rendering and recheck access before returning the file.
 
 ## App Store Connect

@@ -16,7 +16,7 @@ For a clean local checkout or CI job, expose the values as protected environment
 
 Run `Scripts/setup-release-config.sh` from any directory. It validates the values, creates `Piano/Config/Release.xcconfig` with owner-only permissions, and **refuses to overwrite** an existing file. CI should inject the three variables from its secret store immediately before running the setup script; do not put them in command arguments, committed files, or build logs. To change an existing local configuration, edit or replace it deliberately after keeping a private backup. The script accepts `PIANOFLOW_RELEASE_CONFIG_PATH` as an absolute path for an isolated checkout or setup test; normal builds use the path above.
 
-The app target's **Validate Release ad IDs** phase runs on every Release build and checks Xcode's resolved build settings, including any command-line overrides. It fails for missing or unresolved values, malformed IDs, Google's sample publisher, or ad units from a different publisher. Diagnostics name the invalid setting without printing its value. Debug builds and the UI smoke suite are unaffected.
+The app target's **Validate Release ad IDs** phase runs on every iOS Release build and checks Xcode's resolved build settings, including any command-line overrides. A Mac Catalyst build links no ad SDK and carries no ad identifiers, so the phase exits early when `IS_MACCATALYST` is `YES`; see [Mac Catalyst support](MacCatalyst.md). It fails for missing or unresolved values, malformed IDs, Google's sample publisher, or ad units from a different publisher. Diagnostics name the invalid setting without printing its value. Debug builds and the UI smoke suite are unaffected.
 
 ## Verify a distribution build
 

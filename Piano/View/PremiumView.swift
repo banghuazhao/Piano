@@ -33,7 +33,7 @@ struct PremiumView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 18) {
-                        ForEach(PremiumFeature.allCases) { benefit in
+                        ForEach(PremiumFeature.purchasable) { benefit in
                             self.benefit(benefit.title, symbol: benefit.symbol, detail: benefit.detail)
                         }
                     }
@@ -172,7 +172,7 @@ struct PremiumView: View {
     private func purchase() async {
         switch await store.purchase() {
         case .purchased:
-            showFeedback("Premium is ready. Ad-free playing, both piano sounds, advanced recording tools, and lossless WAV export are unlocked.")
+            showFeedback("Premium is ready. \(PremiumFeature.unlockedSummary)")
         case .pending:
             showFeedback("Your purchase is pending approval. Premium will unlock automatically when the App Store confirms it.")
         case .cancelled:

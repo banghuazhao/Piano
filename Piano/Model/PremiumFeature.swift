@@ -9,6 +9,25 @@ enum PremiumFeature: String, CaseIterable, Identifiable, Sendable {
 
     var id: String { rawValue }
 
+    /// The Mac Catalyst build ships without ads, so it never advertises the ad-free
+    /// benefit. Everything else is unlocked by the same shared purchase.
+    static var purchasable: [PremiumFeature] {
+        #if targetEnvironment(macCatalyst)
+        allCases.filter { $0 != .adFree }
+        #else
+        allCases
+        #endif
+    }
+
+    /// Named benefits for the confirmation shown after a verified purchase.
+    static var unlockedSummary: String {
+        #if targetEnvironment(macCatalyst)
+        "Both piano sounds, advanced recording tools, and lossless WAV export are unlocked."
+        #else
+        "Ad-free playing, both piano sounds, advanced recording tools, and lossless WAV export are unlocked."
+        #endif
+    }
+
     var title: String {
         switch self {
         case .adFree: "Ad-free playing"

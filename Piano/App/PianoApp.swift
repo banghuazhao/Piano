@@ -28,6 +28,7 @@ struct PianoApp: App {
             PianoView()
                 .defaultAppStorage(PianoRuntimeEnvironment.defaults)
                 .pianoUITestTextSize()
+                .pianoMacWindowSizing()
                 .task {
                     guard !PianoRuntimeEnvironment.isUITesting else { return }
                     await premium.prepare()
