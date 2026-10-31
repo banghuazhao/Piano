@@ -5,6 +5,9 @@ cd "$(dirname "$0")/.."
 checks_dir="$(mktemp -d "${TMPDIR:-/tmp}/PianoFlowChecks.XXXXXX")"
 trap 'rm -rf "$checks_dir"' EXIT
 
+xcrun swiftc Piano/Service/AdConsentGate.swift Tests/AdConsentChecks.swift -o "$checks_dir/ad-consent"
+"$checks_dir/ad-consent"
+
 xcrun swiftc Piano/Model/PianoNote.swift Piano/Model/PianoKey.swift \
   Piano/Model/KeyboardHitTester.swift Tests/KeyboardChecks.swift -o "$checks_dir/keyboard"
 "$checks_dir/keyboard"

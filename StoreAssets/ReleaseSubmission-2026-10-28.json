@@ -1,0 +1,34 @@
+{
+  "appID": "6752531110",
+  "bundleID": "com.appsbay.PianoFlow",
+  "version": "1.2",
+  "build": "9",
+  "buildID": "f77218ce-c59b-4475-b26e-855674b62ebe",
+  "appStoreVersionID": "be987d3a-e05c-4fe5-b5ed-635f04726c7b",
+  "reviewSubmissionID": "d489d83c-73dc-47e1-8a49-b02f763e8663",
+  "verifiedOn": "2026-10-28",
+  "submissionState": "WAITING_FOR_REVIEW",
+  "appVersionState": "WAITING_FOR_REVIEW",
+  "releaseType": "MANUAL",
+  "premium": {
+    "appleID": "6827458121",
+    "productID": "com.appsbay.PianoFlow.premium",
+    "versionID": "69b1afd4-6dbf-4e5b-8c12-b69ad3359cb1",
+    "state": "WAITING_FOR_REVIEW",
+    "reviewScreenshot": "StoreAssets/Sources/premium-review.png",
+    "reviewScreenshotSHA256": "c4131e40452985278b543b1c6346a5b5fee4f67be68df7da29d6aa3b74a254b3",
+    "screenshotSource": "Actual PremiumView on iPad Simulator; no live purchase or product-price result represented"
+  },
+  "checks": {
+    "archiveFixturesPassed": 13,
+    "signedArchivePassed": true,
+    "explicitAppStoreExportPassed": true,
+    "premiumBenefitsUITestPassed": 1,
+    "liveSandboxPurchaseVerified": false,
+    "physicalDeviceReleaseQAComplete": false
+  },
+  "warnings": [
+    "App ID prefix change may make prior-prefix Keychain items inaccessible; no first-party Keychain storage found in source audit.",
+    "Missing matching vendor dSYMs for GoogleMobileAds and UserMessagingPlatform; app dSYM is valid."
+  ]
+}

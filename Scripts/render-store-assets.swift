@@ -3,6 +3,7 @@
 // Render App Store artwork from real, unmodified app screenshots.
 // Build: swiftc Scripts/render-store-assets.swift -o /tmp/render-store-assets
 // Run:   /tmp/render-store-assets path/to/manifest.json
+// Refresh only the contact sheet: add --preview-only before the manifest path.
 //
 // Manifest paths are relative to the manifest file. Output dimensions are exact pixels.
 // `creative` is always text-free; use it only for artwork with confirmed dimensions.
@@ -59,7 +60,7 @@ private enum RenderError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .usage:
-            "Usage: render-store-assets path/to/manifest.json"
+            "Usage: render-store-assets [--preview-only] path/to/manifest.json"
         case .invalidManifest(let detail):
             "Invalid manifest: \(detail)"
         case .unreadableImage(let path):
@@ -372,12 +373,12 @@ private func render(_ asset: Asset, images: [CGImage]) throws -> CGImage {
     case .creative:
         // Keep all text out of Apple creative artwork. The central composition
         // leaves wide dark margins for editorial placement and safe cropping.
-        canvas.screenshot(images[0], in: canvas.rect(x: w * 0.15, top: h * 0.18,
-                                                     width: w * 0.70, height: h * 0.64))
+        canvas.screenshot(images[0], in: canvas.rect(x: w * 0.09, top: h * 0.12,
+                                                     width: w * 0.82, height: h * 0.76))
         canvas.context.setStrokeColor(Palette.brass.cgColor(alpha: 0.35))
         canvas.context.setLineWidth(max(2, short * 0.0012))
-        canvas.context.move(to: CGPoint(x: w * 0.19, y: h * 0.13))
-        canvas.context.addLine(to: CGPoint(x: w * 0.81, y: h * 0.13))
+        canvas.context.move(to: CGPoint(x: w * 0.19, y: h * 0.07))
+        canvas.context.addLine(to: CGPoint(x: w * 0.81, y: h * 0.07))
         canvas.context.strokePath()
     }
 
@@ -477,8 +478,10 @@ private func resolve(_ path: String, relativeTo base: URL) -> URL {
 }
 
 private func run() throws {
-    guard CommandLine.arguments.count == 2 else { throw RenderError.usage }
-    let manifestURL = URL(fileURLWithPath: CommandLine.arguments[1]).standardizedFileURL
+    let arguments = Array(CommandLine.arguments.dropFirst())
+    let previewOnly = arguments.first == "--preview-only"
+    guard arguments.count == (previewOnly ? 2 : 1) else { throw RenderError.usage }
+    let manifestURL = URL(fileURLWithPath: arguments[previewOnly ? 1 : 0]).standardizedFileURL
     let manifestDirectory = manifestURL.deletingLastPathComponent()
     let manifest = try JSONDecoder().decode(Manifest.self, from: Data(contentsOf: manifestURL))
     guard !manifest.assets.isEmpty else {
@@ -531,8 +534,15 @@ private func run() throws {
         try FileManager.default.createDirectory(at: destinationDirectory,
                                                 withIntermediateDirectories: true)
         let outputURL = destinationDirectory.appendingPathComponent(stem).appendingPathExtension("png")
-        let rendered = try render(asset, images: images)
-        try writePNG(rendered, to: outputURL)
+        if previewOnly {
+            let existing = try loadPNG(at: outputURL)
+            guard existing.width == asset.width, existing.height == asset.height else {
+                throw RenderError.invalidManifest("\(stem) output dimensions differ from the manifest.")
+            }
+        } else {
+            let rendered = try render(asset, images: images)
+            try writePNG(rendered, to: outputURL)
+        }
         previewItems.append((label: "\(subdirectory) / \(stem)", url: outputURL))
         print("\(outputURL.path) (\(asset.width)×\(asset.height), opaque RGB)")
     }

@@ -1,0 +1,41 @@
+{
+  "verifiedAt": "2026-11-01T08:03:35.253986+13:00",
+  "appID": "6752531110",
+  "bundleID": "com.appsbay.PianoFlow",
+  "version": "1.2",
+  "build": "11",
+  "buildID": "5ecc49d6-e060-46a0-a135-7c9a08327f85",
+  "processingState": "VALID",
+  "submissionID": "d489d83c-73dc-47e1-8a49-b02f763e8663",
+  "submissionState": "WAITING_FOR_REVIEW",
+  "appVersionState": "WAITING_FOR_REVIEW",
+  "itemStates": [
+    "READY_FOR_REVIEW",
+    "READY_FOR_REVIEW"
+  ],
+  "releaseType": "MANUAL",
+  "replacesFlaggedBuild": "10",
+  "addressedGuideline": "5.1.1(iv)",
+  "changes": [
+    "ATT is not requested when the user declined tracking purposes (TCF 1, 3, 4) on Google's GDPR form",
+    "Personalization enabled only with regional consent and ATT authorization",
+    "Review notes document GDPR-region variation and how to review both paths"
+  ],
+  "verification": {
+    "featureChecks": "passed",
+    "archiveFixtureTests": "passed",
+    "signedArchive": "passed",
+    "appStoreIPASigning": "Apple Distribution, F694X76A5X.com.appsbay.PianoFlow, get-task-allow false",
+    "simulatorEEA": {
+      "device": "iPad Air 11-inch (M3) simulator iOS 27.0",
+      "doNotConsent": "no ATT request; no prompt on relaunch; non-personalized ad requests sent",
+      "consent": "ATT dialog shown"
+    }
+  },
+  "uploadWarnings": [
+    "Matching vendor dSYMs unavailable for GoogleMobileAds and UserMessagingPlatform; app dSYM verified"
+  ],
+  "ipaSHA256": "cb690ed1372df05f2e24bcad69484725681c10deff82b62fa7c39afc0fe8e08a",
+  "approved": false,
+  "released": false
+}

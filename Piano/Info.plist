@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>Your permission lets our advertising partner use device and ad activity data across other companies’ apps and websites to personalize ads and measure their effectiveness.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Connect a Bluetooth MIDI keyboard to play PianoFlow.</string>
 	<key>GADApplicationIdentifier</key>

@@ -35,6 +35,50 @@ final class PianoSmokeTests: XCTestCase {
         try super.tearDownWithError()
     }
 
+    /// Opt in only on a disposable simulator with this app's production UMP
+    /// application ID and Debug test ad units. Normal smoke runs remain isolated.
+    func testNativeTrackingPermissionCanBeDeclined() throws {
+        guard ProcessInfo.processInfo.environment["PIANOFLOW_ATT_LIVE_TESTS"] == "1" else {
+            throw XCTSkip("Native ATT verification requires an explicitly prepared disposable simulator")
+        }
+        let app = XCUIApplication()
+        currentApp = app
+        app.launchArguments = []
+        app.launch()
+
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let trackingAlert = springboard.alerts.containing(
+            NSPredicate(format: "label CONTAINS[c] %@", "track")
+        ).firstMatch
+        XCTAssertTrue(trackingAlert.waitForExistence(timeout: 45),
+                      "A fresh installation must present Apple's tracking request before ads")
+        let prompt = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        prompt.name = "PianoFlow native ATT permission"
+        prompt.lifetime = .keepAlways
+        add(prompt)
+        trackingAlert.buttons["Ask App Not to Track"].tap()
+
+        let c4 = app.buttons["piano.key.60"]
+        XCTAssertTrue(c4.waitForExistence(timeout: 10))
+        XCTAssertTrue(c4.isHittable, "Declining tracking must leave the piano playable")
+        tapToolbarControl("piano.record", menuTitle: "Record", in: app)
+        c4.press(forDuration: 0.5)
+        tapToolbarControl("piano.record", menuTitle: "Stop recording", in: app)
+        tapToolbarControl("piano.library", menuTitle: "Saved performances", in: app)
+        XCTAssertTrue(app.staticTexts["1 note"].waitForExistence(timeout: 5),
+                      "Recording must remain available without tracking permission")
+        let declined = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        declined.name = "PianoFlow recording after declining ATT"
+        declined.lifetime = .keepAlways
+        add(declined)
+
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(app.buttons["piano.key.60"].waitForExistence(timeout: 10))
+        XCTAssertFalse(trackingAlert.waitForExistence(timeout: 3),
+                       "The app must respect the system's saved tracking choice on relaunch")
+    }
+
     func testRecordSaveRelaunchAndReplay() {
         let runID = UUID().uuidString
         let app = launchApp(runID: runID)
@@ -91,6 +135,14 @@ final class PianoSmokeTests: XCTestCase {
         XCTAssertTrue(c4.waitForExistence(timeout: 5))
         c4.tap()
         tapToolbarControl("piano.sustain", menuTitle: "Turn sustain on", in: app)
+        tapToolbarControl("piano.metronome", menuTitle: "Start metronome", in: app)
+
+        XCTAssertEqual(app.buttons["piano.moreControls"].value as? String,
+                       "Sustain on, Metronome running")
+        let activeControls = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        activeControls.name = "Active toolbar: recording, sustain and metronome"
+        activeControls.lifetime = .keepAlways
+        add(activeControls)
 
         tapToolbarControl("piano.stopAllSound", menuTitle: "Stop all sound", in: app)
         XCTAssertEqual(app.buttons["piano.record"].label, "Record")

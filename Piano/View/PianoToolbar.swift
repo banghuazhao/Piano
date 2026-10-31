@@ -162,9 +162,7 @@ struct PianoToolbar: View {
                 .font(.system(size: 19, weight: .semibold))
                 .foregroundStyle(PianoTheme.ivory)
                 .frame(width: 44, height: 44)
-                .pianoControlSurface(cornerRadius: 10,
-                                     tint: sustainEnabled || metronomeRunning ? PianoTheme.brass : nil,
-                                     interactive: true)
+                .pianoControlSurface(cornerRadius: 10, interactive: true)
                 .overlay(alignment: .topTrailing) {
                     if sustainEnabled || metronomeRunning {
                         Circle()
@@ -319,7 +317,21 @@ struct PianoToolbar: View {
             .foregroundStyle(isActive ? activeColor : PianoTheme.ivory)
             .frame(minWidth: compact ? 44 : 56, minHeight: 44)
             .frame(maxWidth: compact ? .infinity : nil)
-            .pianoControlSurface(cornerRadius: 10, tint: isActive ? activeColor : nil, interactive: true)
+            .pianoControlSurface(cornerRadius: 10, interactive: true)
+            .overlay {
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(isActive ? activeColor.opacity(0.85) : .clear, lineWidth: 1.5)
+                    .allowsHitTesting(false)
+            }
+            .overlay(alignment: .topTrailing) {
+                Circle()
+                    .fill(activeColor)
+                    .frame(width: 4, height: 4)
+                    .padding(5)
+                    .opacity(isActive ? 1 : 0)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
         }
         .buttonStyle(.plain)
         .disabled(!isEnabled)

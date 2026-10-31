@@ -1,0 +1,62 @@
+{
+  "verifiedAt": "2026-10-29T20:54:54.107027+13:00",
+  "appID": "6752531110",
+  "bundleID": "com.appsbay.PianoFlow",
+  "version": "1.2",
+  "build": "10",
+  "buildID": "6f5c2ed6-7a5c-4b0d-a6a4-db4dfe577687",
+  "processingState": "VALID",
+  "submissionID": "d489d83c-73dc-47e1-8a49-b02f763e8663",
+  "submissionState": "WAITING_FOR_REVIEW",
+  "appVersionState": "WAITING_FOR_REVIEW",
+  "premiumState": "WAITING_FOR_REVIEW",
+  "releaseType": "MANUAL",
+  "replacesRejectedBuild": "9",
+  "addressedGuideline": "5.1.2(i)",
+  "changes": [
+    "Apple ATT purpose text and native permission request after regional consent and before ad SDK initialization",
+    "Unresolved tracking permission blocks ads; denied/restricted uses non-personalized treatment",
+    "Publisher first-party ID disabled; live consent and entitlement rechecks; stale ad invalidation",
+    "ATT instructions saved in App Review notes; tracking privacy declarations retained"
+  ],
+  "verification": {
+    "featureChecks": "passed",
+    "archiveFixtureTests": 13,
+    "signedArchive": "passed",
+    "explicitAppIDAppStoreIPASigning": "passed",
+    "nativeATTTest": {
+      "platform": "iPad simulator iOS 27.0",
+      "passed": 1,
+      "failed": 0,
+      "durationSeconds": 88.6,
+      "observed": [
+        "native ATT dialog",
+        "decline",
+        "piano playable",
+        "one-note recording saved",
+        "no repeat prompt on relaunch"
+      ],
+      "usesRealUMPConfiguration": true,
+      "adUnits": "Google test units",
+      "appUITestingBypass": false
+    },
+    "iPhone17ProMaxSimulator": "startup stalled; no native test pass claimed"
+  },
+  "uploadWarnings": [
+    "Existing App ID prefix transition from E6968P466E to F694X76A5X",
+    "Matching vendor dSYMs unavailable for GoogleMobileAds and UserMessagingPlatform; app dSYM verified"
+  ],
+  "pendingChecks": [
+    "Physical-device/accessory listening checks",
+    "Live Sandbox/TestFlight purchase and restore",
+    "In-place App Store update saved-data/privacy verification"
+  ],
+  "artifacts": {
+    "nativePrompt": "build/releases/PianoFlow-1.2-10-20261029/ATT-native-iPad.png",
+    "deniedRecording": "build/releases/PianoFlow-1.2-10-20261029/ATT-denied-recording-iPad.png",
+    "releaseFolder": "build/releases/PianoFlow-1.2-10-20261029"
+  },
+  "ipaSHA256": "cccf16e1bc436318e5559ca1dd75184cd1d1ac2eb595d3e5b3a3ea7f17a4452f",
+  "approved": false,
+  "released": false
+}

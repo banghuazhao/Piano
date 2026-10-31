@@ -1,3 +1,4 @@
+import AppTrackingTransparency
 import GoogleMobileAds
 import SwiftUI
 import UserMessagingPlatform
@@ -15,48 +16,82 @@ final class AdPrivacyManager: ObservableObject {
 
     @Published private(set) var privacyOptionsRequired = false
     @Published private(set) var canRequestAds = false
+    @Published private(set) var requestGeneration = 0
 
-    private var didRequestConsent = false
-    private var hasResolvedConsent = false
-    private var didUpdateConsentInfo = false
-    private var didCompleteConsentForm = false
-    private var isLoadingConsentForm = false
     private var didStartMobileAds = false
     private var isPresentingPrivacyOptions = false
+    private var consentTask: Task<Void, Never>?
+    private var observedTrackingAuthorization: AdConsentGate.TrackingAuthorization?
+    private var appliedTrackingAuthorization: AdConsentGate.TrackingAuthorization?
     private var onAdsReady: (() -> Void)?
 
+    private lazy var consentGate = AdConsentGate(dependencies: .init(
+        isEligible: {
+            PremiumStore.shared.hasDeterminedEntitlement
+                && !PremiumStore.shared.isPremium
+                && UIApplication.shared.applicationState == .active
+        },
+        updateConsent: {
+            let parameters = RequestParameters()
+            #if DEBUG
+            // Lets a Debug simulator run show Google's EEA form to verify the GDPR → ATT order.
+            if ProcessInfo.processInfo.environment["PIANOFLOW_UMP_DEBUG_EEA"] == "1" {
+                let debugSettings = DebugSettings()
+                debugSettings.geography = .EEA
+                parameters.debugSettings = debugSettings
+            }
+            #endif
+            try await ConsentInformation.shared.requestConsentInfoUpdate(with: parameters)
+        },
+        presentConsent: {
+            try await ConsentForm.loadAndPresentIfRequired(from: nil)
+        },
+        canRequestAds: { ConsentInformation.shared.canRequestAds },
+        regionalConsentAllowsTracking: { RegionalTrackingConsent.allowsTracking() },
+        trackingAuthorization: { Self.trackingAuthorization },
+        requestTracking: {
+            // UMP may already have presented ATT through a configured IDFA message.
+            // The gate checks the current system status and the regional choice first.
+            _ = await ATTrackingManager.requestTrackingAuthorization()
+        },
+        onError: { print("[ADS] Consent could not be completed: \($0.localizedDescription)") }
+    ))
+
     private init() {}
+
+    /// Every load/presentation also checks the live status, including late SDK callbacks.
+    var mayRequestAds: Bool {
+        canRequestAds && !isPresentingPrivacyOptions && consentGate.isReady
+            && Self.trackingAuthorization == appliedTrackingAuthorization
+    }
+
+    private static var trackingAuthorization: AdConsentGate.TrackingAuthorization {
+        switch ATTrackingManager.trackingAuthorizationStatus {
+        case .authorized: .authorized
+        case .denied: .denied
+        case .restricted: .restricted
+        case .notDetermined: .notDetermined
+        @unknown default: .notDetermined
+        }
+    }
+
+    /// Revoke the visible/requestable state before an asynchronous entitlement refresh.
+    func refreshPermission() {
+        observeTrackingAuthorization()
+        if !consentGate.isReady || Self.trackingAuthorization != appliedTrackingAuthorization {
+            canRequestAds = false
+        }
+    }
 
     func prepareAds(onAdsReady: @escaping () -> Void) {
         guard PremiumStore.shared.hasDeterminedEntitlement,
               !PremiumStore.shared.isPremium else { return }
-        if didStartMobileAds {
-            canRequestAds = ConsentInformation.shared.canRequestAds
-            if canRequestAds { onAdsReady() }
-            return
-        }
-
         self.onAdsReady = onAdsReady
-        if hasResolvedConsent {
-            updateConsentState()
-            Task { await completeConsentFormIfNeeded() }
-            return
-        }
-        guard !didRequestConsent else { return }
-        didRequestConsent = true
-
-        Task {
-            do {
-                // UMP must update its status at least once in every app session.
-                try await ConsentInformation.shared.requestConsentInfoUpdate(with: RequestParameters())
-                didUpdateConsentInfo = true
-                updatePrivacyOptionsRequirement()
-                await completeConsentFormIfNeeded()
-            } catch {
-                // UMP may still permit requests using consent from a previous session.
-                print("[ADS] Consent update failed: \(error.localizedDescription)")
-            }
-            hasResolvedConsent = true
+        refreshPermission()
+        guard consentTask == nil, !isPresentingPrivacyOptions else { return }
+        consentTask = Task {
+            _ = await consentGate.prepare()
+            consentTask = nil
             updateConsentState()
         }
     }
@@ -67,8 +102,12 @@ final class AdPrivacyManager: ObservableObject {
     }
 
     func presentPrivacyOptions() {
-        guard privacyOptionsRequired, !isPresentingPrivacyOptions else { return }
+        guard privacyOptionsRequired, !isPresentingPrivacyOptions,
+              consentTask == nil, UIApplication.shared.applicationState == .active else { return }
         isPresentingPrivacyOptions = true
+        canRequestAds = false
+        // Previously loaded ads must not survive a change to regional privacy choices.
+        requestGeneration += 1
         Task {
             do {
                 try await ConsentForm.presentPrivacyOptionsForm(from: nil)
@@ -76,6 +115,7 @@ final class AdPrivacyManager: ObservableObject {
                 print("[ADS] Privacy options could not be presented: \(error.localizedDescription)")
             }
             isPresentingPrivacyOptions = false
+            _ = await consentGate.prepare()
             updateConsentState()
         }
     }
@@ -84,34 +124,35 @@ final class AdPrivacyManager: ObservableObject {
         privacyOptionsRequired = ConsentInformation.shared.privacyOptionsRequirementStatus == .required
     }
 
-    private func completeConsentFormIfNeeded() async {
-        guard didUpdateConsentInfo, !didCompleteConsentForm,
-              !isLoadingConsentForm, !PremiumStore.shared.isPremium else { return }
-        isLoadingConsentForm = true
-        defer {
-            isLoadingConsentForm = false
-            updateConsentState()
-        }
-        do {
-            try await ConsentForm.loadAndPresentIfRequired(from: nil)
-            didCompleteConsentForm = true
-        } catch {
-            print("[ADS] Consent form could not be presented: \(error.localizedDescription)")
+    private func observeTrackingAuthorization() {
+        let current = Self.trackingAuthorization
+        if observedTrackingAuthorization != current {
+            observedTrackingAuthorization = current
+            requestGeneration += 1
         }
     }
 
     private func updateConsentState() {
         updatePrivacyOptionsRequirement()
-        let isAllowed = PremiumStore.shared.hasDeterminedEntitlement
-            && !PremiumStore.shared.isPremium
-            && ConsentInformation.shared.canRequestAds
+        observeTrackingAuthorization()
+        let isAllowed = consentGate.isReady && !isPresentingPrivacyOptions
+        guard isAllowed else {
+            canRequestAds = false
+            return
+        }
+        let tracking = Self.trackingAuthorization
+        // ATT denial/restriction or a regional refusal never becomes an alternative
+        // identifier or a personalized request. UMP restrictions still apply when allowed.
+        let configuration = MobileAds.shared.requestConfiguration
+        configuration.setPublisherFirstPartyIDEnabled(false)
+        configuration.publisherPrivacyPersonalizationState = consentGate.mayTrack ? .default : .disabled
+        appliedTrackingAuthorization = tracking
         let shouldStartMobileAds = isAllowed && !didStartMobileAds
         if shouldStartMobileAds {
             didStartMobileAds = true
             MobileAds.shared.start(completionHandler: nil)
         }
         canRequestAds = isAllowed
-        guard shouldStartMobileAds else { return }
         let callback = onAdsReady
         onAdsReady = nil
         callback?()
@@ -125,6 +166,7 @@ final class OpenAd: NSObject, ObservableObject, FullScreenContentDelegate {
     private var hasEnteredBackground = false
     private var isLoading = false
     private var isShowing = false
+    private var requestGeneration: Int?
 
     func sceneDidEnterBackground() {
         hasEnteredBackground = true
@@ -133,7 +175,7 @@ final class OpenAd: NSObject, ObservableObject, FullScreenContentDelegate {
     func sceneDidBecomeActive() {
         let isReturning = hasEnteredBackground
         hasEnteredBackground = false
-        guard AdPrivacyManager.shared.canRequestAds,
+        guard AdPrivacyManager.shared.mayRequestAds,
               !PremiumStore.shared.isPremium else { return }
 
         if isReturning && !PianoSessionActivity.shouldDeferAppOpenAd,
@@ -150,20 +192,23 @@ final class OpenAd: NSObject, ObservableObject, FullScreenContentDelegate {
     }
 
     func requestAppOpenAd() {
-        guard AdPrivacyManager.shared.canRequestAds,
+        guard AdPrivacyManager.shared.mayRequestAds,
               !PremiumStore.shared.isPremium,
               !isLoading, !isShowing else { return }
         guard availableAd() == nil else { return }
         guard !AdManager.GoogleAdsID.appOpenAdID.isEmpty else { return }
 
         isLoading = true
+        let generation = AdPrivacyManager.shared.requestGeneration
         let request = Request()
         request.scene = foregroundWindowScene()
         AppOpenAd.load(with: AdManager.GoogleAdsID.appOpenAdID, request: request) { [weak self] ad, error in
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.isLoading = false
-                guard !PremiumStore.shared.isPremium else { return }
+                guard AdPrivacyManager.shared.mayRequestAds,
+                      AdPrivacyManager.shared.requestGeneration == generation,
+                      !PremiumStore.shared.isPremium else { return }
                 guard let ad else {
                     if let error {
                         print("[ADS] App open ad failed to load: \(error.localizedDescription)")
@@ -172,6 +217,7 @@ final class OpenAd: NSObject, ObservableObject, FullScreenContentDelegate {
                 }
                 self.appOpenAd = ad
                 self.loadTime = Date()
+                self.requestGeneration = generation
                 ad.fullScreenContentDelegate = self
             }
         }
@@ -179,6 +225,7 @@ final class OpenAd: NSObject, ObservableObject, FullScreenContentDelegate {
 
     private func availableAd() -> AppOpenAd? {
         guard let appOpenAd, let loadTime,
+              requestGeneration == AdPrivacyManager.shared.requestGeneration,
               Date().timeIntervalSince(loadTime) >= 0,
               Date().timeIntervalSince(loadTime) < 4 * 60 * 60 else {
             self.appOpenAd = nil
@@ -207,6 +254,7 @@ final class OpenAd: NSObject, ObservableObject, FullScreenContentDelegate {
     func discardCachedAd() {
         appOpenAd = nil
         loadTime = nil
+        requestGeneration = nil
     }
 }
 
@@ -231,6 +279,7 @@ struct BannerView: View {
     var body: some View {
         if premium.hasDeterminedEntitlement && !premium.isPremium && privacy.canRequestAds {
             AdBannerControllerView()
+                .id(privacy.requestGeneration)
         }
     }
 }
@@ -257,6 +306,8 @@ private struct AdBannerControllerView: UIViewControllerRepresentable {
 
     func updateUIViewController(_ controller: BannerViewController, context: Context) {
         let banner = controller.bannerView
+        guard AdPrivacyManager.shared.mayRequestAds,
+              context.coordinator.requestGeneration == AdPrivacyManager.shared.requestGeneration else { return }
         guard viewWidth > .zero, !AdManager.GoogleAdsID.bannerViewAdUnitID.isEmpty else { return }
         guard abs(controller.lastRequestedWidth - viewWidth) > 1 else { return }
 
@@ -272,8 +323,10 @@ private struct AdBannerControllerView: UIViewControllerRepresentable {
         Coordinator(self)
     }
 
+    @MainActor
     final class Coordinator: NSObject, BannerViewControllerWidthDelegate, BannerViewDelegate {
         let parent: AdBannerControllerView
+        let requestGeneration = AdPrivacyManager.shared.requestGeneration
 
         init(_ parent: AdBannerControllerView) {
             self.parent = parent
@@ -284,7 +337,8 @@ private struct AdBannerControllerView: UIViewControllerRepresentable {
         }
 
         func bannerViewDidReceiveAd(_ bannerView: GoogleMobileAds.BannerView) {
-            bannerView.isHidden = !AdPrivacyManager.shared.canRequestAds
+            bannerView.isHidden = !AdPrivacyManager.shared.mayRequestAds
+                || requestGeneration != AdPrivacyManager.shared.requestGeneration
                 || PremiumStore.shared.isPremium
         }
 
@@ -298,6 +352,7 @@ private struct AdBannerControllerView: UIViewControllerRepresentable {
     }
 }
 
+@MainActor
 fileprivate protocol BannerViewControllerWidthDelegate: AnyObject {
     func bannerViewController(_ controller: BannerViewController, didUpdate width: CGFloat)
 }

@@ -10,8 +10,7 @@
       "height": 1206,
       "screenshot": "Sources/iphone-instrument.png",
       "headline": "Make every note yours.",
-      "subhead": "An expressive piano, wherever you are.",
-      "footer": "PLAY  ·  RECORD  ·  PRACTICE"
+      "subhead": "An expressive piano, wherever you are."
     },
     {
       "name": "01-play-on-duo",
@@ -98,6 +97,26 @@
       "width": 5244,
       "height": 2950,
       "screenshot": "Sources/iphone-instrument.png"
+    },
+    {
+      "name": "02-record-every-idea",
+      "subdirectory": "iPhone",
+      "style": "landscape",
+      "width": 2622,
+      "height": 1206,
+      "screenshot": "Sources/iphone-recording.png",
+      "headline": "Record every idea.",
+      "subhead": "Capture notes, chords, and sustain."
+    },
+    {
+      "name": "01-play-a-real-piano",
+      "subdirectory": "iPhone-Large",
+      "style": "landscape",
+      "width": 2868,
+      "height": 1320,
+      "screenshot": "Sources/iphone-instrument.png",
+      "headline": "Make every note yours.",
+      "subhead": "An expressive piano, wherever you are."
     }
   ]
 }

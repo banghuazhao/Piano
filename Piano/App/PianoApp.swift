@@ -38,6 +38,7 @@ struct PianoApp: App {
                 .onChange(of: scenePhase) { _, newPhase in
                     if newPhase == .active {
                         guard !PianoRuntimeEnvironment.isUITesting else { return }
+                        AdPrivacyManager.shared.refreshPermission()
                         activationTask?.cancel()
                         activationTask = Task {
                             let needsRefresh = premium.hasDeterminedEntitlement

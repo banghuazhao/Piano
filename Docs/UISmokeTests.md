@@ -26,7 +26,7 @@ The assertions in [PianoSmokeTests.swift](../PianoUITests/PianoSmokeTests.swift)
 
 - A real two-note recording survives relaunch and replay enters its playing state.
 - A keyboard tap advances a guided exercise.
-- Stop all sound saves an active take, clears sustain and pressed-key state, and leaves the same key ready for another recording.
+- Stop all sound saves an active take, clears sustain, metronome, and pressed-key state, and leaves the same key ready for another recording.
 - Practice progress and playable keys survive landscape rotations on displays that follow interface orientation requests.
 - Practice progress and playable keys survive portrait resizing on iPad. This case skips on standard iPhones, where the app supports landscape, and on the open iPhone Duo inner display.
 - The toolbar remains reachable and the Key labels setting can be changed at AX5.
@@ -59,3 +59,5 @@ Both Premium cases additionally passed on iPhone 17 with iOS 26.5. The recording
 The final unsigned Release device build and feature checks passed. Real local StoreKit purchase, restore, pending, and refund behavior are covered separately by the serial StoreKit suite described in [PremiumSetup.md](PremiumSetup.md); production Sandbox/TestFlight checks remain part of release setup.
 
 The Privacy and Support case also passed on iPhone 17 with iOS 26.5 at AX5. It checks that both controls and the installed version/build are reachable and fit within the visible screen. The privacy destination and support address were verified against the published App Store privacy policy; the test does not send mail or depend on a mail account being configured.
+
+After a physical build 7 report that ON toolbar buttons filled with color and obscured their icons, build 8 changed those controls to neutral glass with colored glyphs, thin active outlines, and a status dot on More. The focused `testStopAllSoundFinishesAnActiveTake` passed on the iPhone 17 simulator with iOS 26.5 in both Regular and Largest AX (one test, zero failures in each configuration). Its active-state captures show the recording, sustain, and metronome indicators legible without full-button color fill: [Regular](../build/releases/PianoFlow-1.2-8-20261027/Toolbar-active-regular.png) and [Largest AX](../build/releases/PianoFlow-1.2-8-20261027/Toolbar-active-largest-text.png). These are Debug simulator results; the build 8 appearance on the physical iPhone remains to be confirmed.

@@ -100,7 +100,7 @@ Piano/
 
 Run `bash Scripts/check-features.sh` to check rhythm scoring, practice progress, MIDI input and file import, score notation, recording boundaries, playback, and file export models. Build the `Piano` scheme for normal development. Use its local StoreKit configuration to test Premium; see [Premium setup](Docs/PremiumSetup.md) for product configuration and purchase testing.
 
-For Release, supply the three production AdMob IDs through the ignored local configuration before creating a signed archive. The build checks resolved IDs and excludes configuration files from the app bundle. See [Release build setup](Docs/ReleaseSetup.md) for clean-checkout and CI steps.
+For Release, supply the three production AdMob IDs through the ignored local configuration before creating a signed archive. The build checks resolved IDs and excludes configuration files from the app bundle. Run `Scripts/check-archive.sh /absolute/path/to/Piano.xcarchive` on the signed archive before Xcode export; it checks bundle metadata, privacy manifests, signing, and matching symbols. See [Release build setup](Docs/ReleaseSetup.md) for clean-checkout, CI, and archive-check details.
 
 Release screenshots, headline copy, Header/Search Results artwork, and regeneration instructions live in [StoreAssets](StoreAssets/README.md). The iPhone Duo uses the available window geometry for its inner and outer displays; iOS 17.6 remains the minimum supported system.
 
