@@ -9,6 +9,12 @@ fail() {
     exit 1
 }
 
+# Mac Catalyst links no ad SDK and shows no ads, so it carries no ad IDs to check.
+if [[ "${IS_MACCATALYST-}" == 'YES' ]]; then
+    printf 'Mac Catalyst build: no ad configuration to validate.\n'
+    exit 0
+fi
+
 app_id="${GADApplicationIdentifier-}"
 banner_id="${bannerViewAdUnitID-}"
 open_id="${appOpenAdID-}"

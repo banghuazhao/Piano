@@ -1,3 +1,7 @@
+// Mac Catalyst ships without ads: the Google Mobile Ads SDK has no Mac Catalyst
+// slice, so the package is linked for iOS only. See AdManagerMac.swift for the
+// no-op stand-ins that keep the shared call sites unchanged.
+#if !targetEnvironment(macCatalyst)
 import AppTrackingTransparency
 import GoogleMobileAds
 import SwiftUI
@@ -382,3 +386,5 @@ final class BannerViewController: UIViewController {
         )
     }
 }
+
+#endif

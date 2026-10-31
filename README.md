@@ -22,6 +22,7 @@ A tactile iOS piano keyboard built with SwiftUI and AVAudioEngine. Play the full
 - **🔊 PianoFlow Premium**: A one-time purchase removes ads and unlocks Warm Studio, Bright Hall, playback speed/loops/sections, trimmed copies, and lossless WAV export
 - **📱 Instrument design**: Responsive ivory and ebony keys with a compact dark control panel
 - **🫧 Liquid Glass**: Native iOS 26 control surfaces and navigation, with opaque high-contrast/Reduce Transparency controls and an iOS 17.6 fallback
+- **🖥️ Mac Catalyst**: The same target also builds for the Mac, keeping one bundle identifier, one App Store record, and one Premium purchase through Universal Purchase; the Mac build is ad-free
 - **🏗️ MVVM Architecture**: Clean separation with `@Observable` view models and Swift concurrency
 
 ### 🏗️ Architecture
@@ -46,6 +47,7 @@ A tactile iOS piano keyboard built with SwiftUI and AVAudioEngine. Play the full
 - 💻 Xcode 27.1 or later (Liquid Glass and iPhone Duo SDK support)
 - 📱 iOS 17.6 or later
 - 🖥️ A macOS release supported by Xcode 27.1
+- 🖥️ macOS 14.6 or later to run the Mac Catalyst build
 
 ### 🚀 Getting Started
 1. 📥 Clone the repository
@@ -58,6 +60,7 @@ cd PianoFlow
 open Piano.xcodeproj
 ```
 3. ▶️ Select the `Piano` scheme and a simulator or device, then Run.
+   For the Mac, keep the same scheme and choose the **My Mac (Mac Catalyst)** destination. See [Mac Catalyst support](Docs/MacCatalyst.md).
 
 **📝 Note**: If you replace the SoundFont, put your `.sf2` file in `Piano/Sound/` and update the load call if needed.
 
@@ -98,9 +101,9 @@ Piano/
 
 ### Verification and Premium setup
 
-Run `bash Scripts/check-features.sh` to check rhythm scoring, practice progress, MIDI input and file import, score notation, recording boundaries, playback, and file export models. Build the `Piano` scheme for normal development. Use its local StoreKit configuration to test Premium; see [Premium setup](Docs/PremiumSetup.md) for product configuration and purchase testing.
+Run `bash Scripts/check-features.sh` to check rhythm scoring, practice progress, MIDI input and file import, score notation, recording boundaries, playback, and file export models. Build the `Piano` scheme for normal development. Use its local StoreKit configuration to test Premium; see [Premium setup](Docs/PremiumSetup.md) for product configuration and purchase testing. The Mac Catalyst build shares that purchase; see [Mac Catalyst support](Docs/MacCatalyst.md) for what differs on the Mac.
 
-For Release, supply the three production AdMob IDs through the ignored local configuration before creating a signed archive. The build checks resolved IDs and excludes configuration files from the app bundle. Run `Scripts/check-archive.sh /absolute/path/to/Piano.xcarchive` on the signed archive before Xcode export; it checks bundle metadata, privacy manifests, signing, and matching symbols. See [Release build setup](Docs/ReleaseSetup.md) for clean-checkout, CI, and archive-check details.
+For Release, supply the three production AdMob IDs through the ignored local configuration before creating a signed archive. The build checks resolved IDs and excludes configuration files from the app bundle. Run `Scripts/check-archive.sh /absolute/path/to/Piano.xcarchive` on the signed archive before Xcode export; it checks bundle metadata, privacy manifests, signing, and matching symbols. It inspects iOS archives only; a Mac Catalyst Release build skips the ad-ID validation phase and is not covered by the inspector. See [Release build setup](Docs/ReleaseSetup.md) for clean-checkout, CI, and archive-check details.
 
 Release screenshots, headline copy, Header/Search Results artwork, and regeneration instructions live in [StoreAssets](StoreAssets/README.md). The iPhone Duo uses the available window geometry for its inner and outer displays; iOS 17.6 remains the minimum supported system.
 
