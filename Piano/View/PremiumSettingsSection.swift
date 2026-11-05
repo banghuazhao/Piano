@@ -8,7 +8,7 @@ struct PremiumSettingsSection: View {
     var body: some View {
         SettingsPanel(
             title: "PianoFlow Premium",
-            subtitle: store.isPremium ? "Your upgrade is active" : "Ad-free playing and more studio tools",
+            subtitle: store.isPremium ? "Your upgrade is active" : PremiumFeature.upgradeSubtitle,
             symbol: "sparkles"
         ) {
             Button {

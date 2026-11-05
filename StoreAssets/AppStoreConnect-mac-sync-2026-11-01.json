@@ -1,0 +1,72 @@
+{
+  "verifiedAt": "2026-11-01T17:40:00+13:00",
+  "appID": "6752531110",
+  "bundleID": "com.appsbay.PianoFlow",
+  "platform": "MAC_OS",
+  "appStoreVersionID": "4629b087-c862-4724-9da2-7282a3511fb8",
+  "versionString": "1.2",
+  "versionStringWasChangedFrom": "1.0",
+  "appStoreState": "PREPARE_FOR_SUBMISSION",
+  "releaseType": "MANUAL",
+  "build": {
+    "version": "12",
+    "marketingVersion": "1.2",
+    "deliveryUUID": "d44e607e-3730-45dc-b86a-2aa0c5637056",
+    "uploadBytes": 11532271,
+    "architectures": [
+      "x86_64",
+      "arm64"
+    ],
+    "signing": "Apple Distribution, Mac Catalyst Team Store Provisioning Profile, F694X76A5X.com.appsbay.PianoFlow, get-task-allow false",
+    "installerSigning": "3rd Party Mac Developer Installer: APPS BAY LIMITED (F694X76A5X)",
+    "attachedToVersion": true,
+    "processingState": "VALID",
+    "id": "d44e607e-3730-45dc-b86a-2aa0c5637056"
+  },
+  "localization": {
+    "id": "59a63c75-e95a-4072-a1aa-eabf16fceec1",
+    "locale": "en-US",
+    "descriptionChars": 2113,
+    "promotionalTextChars": 127,
+    "keywordsChars": 93,
+    "whatsNew": "rejected for a first platform version; kept in Listing-mac-en-US.json for the next update"
+  },
+  "screenshots": {
+    "setID": "a09c4df7-534b-4fea-83b0-6a26fea001e7",
+    "displayType": "APP_DESKTOP",
+    "items": [
+      {
+        "fileName": "01-play-on-your-mac.png",
+        "id": "f1c00019-27b7-82a6-8008-c064fea0d77c",
+        "bytes": 3001406,
+        "pixels": "2880x1800",
+        "assetDeliveryState": "COMPLETE"
+      },
+      {
+        "fileName": "02-practice-on-your-mac.png",
+        "id": "adc00019-27b7-82a6-8027-e16e7f40341f",
+        "bytes": 2377404,
+        "pixels": "2880x1800",
+        "assetDeliveryState": "COMPLETE"
+      }
+    ]
+  },
+  "inAppPurchase": "com.appsbay.PianoFlow.premium is shared through the app record; no macOS-specific product exists or is needed",
+  "submitted": false,
+  "approved": false,
+  "released": false,
+  "notes": [
+    "The macOS platform version already existed as an empty auto-created 1.0 shell with no copy, no screenshots, and no build.",
+    "iOS 1.2 build 11 remains Waiting for Review and is a separate platform version; none of this touched it.",
+    "releaseType was changed from the inherited AFTER_APPROVAL to MANUAL on 2 November 2026, at the owner's request, so the Mac app matches the iOS practice of releasing by hand."
+  ],
+  "appStoreReviewDetail": {
+    "id": "d1d78933-44fe-40e9-8967-d2128e3d7326",
+    "notesReplaced": true,
+    "reason": "The auto-created macOS version inherited the iOS ATT review notes, which do not apply: the Mac build links no ad SDK and never requests tracking.",
+    "separateFrom": "The iOS 1.2 review detail 9a9cc7bd-0ad1-4c62-b1fa-6883495303c7 was confirmed to be a different record and was not touched."
+  },
+  "blockers": [
+    "Export compliance is unanswered on build 12 (usesNonExemptEncryption is null). This is the owner's declaration and was deliberately left unanswered."
+  ]
+}

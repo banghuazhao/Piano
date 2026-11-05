@@ -19,6 +19,15 @@ enum PremiumFeature: String, CaseIterable, Identifiable, Sendable {
         #endif
     }
 
+    /// One-line pitch for the settings panel. The Mac build has no ads to remove.
+    static var upgradeSubtitle: String {
+        #if targetEnvironment(macCatalyst)
+        "More piano sounds and studio tools"
+        #else
+        "Ad-free playing and more studio tools"
+        #endif
+    }
+
     /// Named benefits for the confirmation shown after a verified purchase.
     static var unlockedSummary: String {
         #if targetEnvironment(macCatalyst)
