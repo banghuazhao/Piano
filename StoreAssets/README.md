@@ -13,15 +13,22 @@ The target set has **nine screenshot cards**: two medium iPhone, one large iPhon
 | `en-US/iPad-13` | iPad 13-inch | 2064 × 2752 |
 | `en-US/iPhone-Duo-Outer` | iPhone Duo outer display; two cards | 2034 × 1398 |
 | `en-US/iPhone-Duo-Inner` | iPhone Duo inner display; three cards | 2853 × 2007; portrait 2007 × 2853 |
+| `en-US/Mac` | **macOS** screenshots; two cards | 2880 × 1800 |
 | `en-US/Creatives/piano-header.png` | Product Page Information → Header and Search Results → Header | 3840 × 1646 |
 | `en-US/Creatives/piano-search-results.png` | Product Page Information → Header and Search Results → Search Results | 3840 × 2560 |
 | `en-US/Creatives/piano-universal.png` | Unused alternative: one universal image for both creative placements | 5244 × 2950 |
 
 PNG exports are losslessly compressed, opaque RGB. Header and Search Results artwork has a central piano focal point, without embedded pricing, badges, awards, or text that needs localization. Preview the crops in App Store Connect before submitting. Use either the dedicated Header/Search Results pair or the universal alternative.
 
-`Listing-en-US.json` records the English listing copy saved to the new 1.2 version. The existing support, marketing, and privacy pages were verified and their HTTPS URLs saved. These assets do not set the Premium price or change the in-app purchase record.
+`Listing-en-US.json` records the English listing copy saved to the new 1.2 version. `Listing-mac-en-US.json` is the **drafted** macOS copy for the first Mac Catalyst version; it has not been saved in App Store Connect. Its Premium section does not claim ad removal, because the Mac build links no ad SDK, and it does not claim multi-touch chords, because a pointer plays one note at a time. See [Mac Catalyst support](../Docs/MacCatalyst.md). The existing support, marketing, and privacy pages were verified and their HTTPS URLs saved. These assets do not set the Premium price or change the in-app purchase record.
 
 `Sources/premium-review.png` is the separate IAP review screenshot of the actual Premium benefits screen on iPad Simulator. It is not a public marketing card and contains no production-price or completed-purchase claim. The focused capture test passed; live Sandbox purchase/restore and hardware checks remain separate.
+
+## macOS cards
+
+The two Mac cards frame authentic captures of the Mac Catalyst app window, taken on 1 November 2026 from a Debug Mac Catalyst build at a 1352 × 849 pt window (Window ▸ Fill on a 1352 × 878 pt display), captured window-only with `screencapture -l <window-id> -o`. Sources are `Sources/mac-instrument.png` and `Sources/mac-practice.png`. 2880 × 1800 is the largest size Apple accepts for Mac, and the captures are downscaled into the card, never upscaled.
+
+A third capture of the settings panel was taken and deliberately **not** used: it shows the live Premium price, and these cards carry no price claim.
 
 ## Regenerate
 

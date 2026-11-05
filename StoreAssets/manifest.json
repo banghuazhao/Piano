@@ -117,6 +117,27 @@
       "screenshot": "Sources/iphone-instrument.png",
       "headline": "Make every note yours.",
       "subhead": "An expressive piano, wherever you are."
+    },
+    {
+      "name": "01-play-on-your-mac",
+      "subdirectory": "Mac",
+      "style": "landscape",
+      "width": 2880,
+      "height": 1800,
+      "screenshot": "Sources/mac-instrument.png",
+      "headline": "Your Mac is the piano.",
+      "subhead": "Eighty-eight keys, a full range, one window."
+    },
+    {
+      "name": "02-practice-on-your-mac",
+      "subdirectory": "Mac",
+      "style": "landscape",
+      "width": 2880,
+      "height": 1800,
+      "screenshot": "Sources/mac-practice.png",
+      "headline": "Practice, every day.",
+      "subhead": "Scales, your own MIDI songs, and a streak to keep.",
+      "footer": "GUIDED PRACTICE"
     }
   ]
 }

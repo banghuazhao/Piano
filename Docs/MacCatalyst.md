@@ -57,17 +57,34 @@ In Xcode, pick the `Piano` scheme and the **My Mac (Mac Catalyst)** destination.
 
 ## App Store Connect
 
-The Mac build is **not** submitted yet. Before the first macOS submission:
+The macOS platform is **staged but not submitted**. Done on 1 November 2026, recorded in
+[AppStoreConnect-mac-sync-2026-11-01.json](../StoreAssets/AppStoreConnect-mac-sync-2026-11-01.json):
 
-1. In Certificates, Identifiers & Profiles, confirm the explicit `com.appsbay.PianoFlow` App ID is
-   enabled for Mac Catalyst. Xcode's automatic signing normally handles this on the first archive.
-2. In App Store Connect, add **macOS** as a platform to the existing PianoFlow app record rather
-   than creating a new app. The Premium in-app purchase belongs to the record and needs no
-   duplicate.
-3. Prepare the macOS version's own screenshots and description. Pricing, availability, and the
-   Premium product carry over.
-4. Archive with the Mac Catalyst destination and the F694X76A5X team, then upload. Verify a Mac
-   purchase and a restore against Sandbox or TestFlight for macOS before release.
+- The macOS platform already existed on the app record as an empty auto-created **1.0** version
+  with no copy, no screenshots, and no build. Its version string was changed to **1.2** so it
+  matches the binary's `MARKETING_VERSION`.
+- Build **1.2 (12)** was uploaded with `xcrun altool` and reached processing state VALID, and is
+  attached to the macOS version.
+- The English listing from [Listing-mac-en-US.json](../StoreAssets/Listing-mac-en-US.json) was
+  saved: description, promotional text, and keywords. `whatsNew` is rejected for the first version
+  on a platform, so it stays in the JSON for the first macOS update.
+- Two `APP_DESKTOP` screenshots from `StoreAssets/en-US/Mac` were uploaded and both reached
+  asset delivery state COMPLETE at 2880 × 1800.
+- The App Review notes were replaced. The auto-created version had inherited the iOS ATT notes,
+  which do not apply to a build that links no ad SDK and never requests tracking. The iOS 1.2
+  review detail is a separate record and was not touched.
+- The release type was changed from the inherited `AFTER_APPROVAL` to **`MANUAL`**, so the Mac
+  app waits for an explicit release after approval, as iOS 1.2 does.
+
+One thing is deliberately left for the owner: **export compliance** on build 12 is unanswered
+(`usesNonExemptEncryption` is null). It is a legal declaration and is not made on the owner's
+behalf. Submission is blocked until it is answered.
+
+Premium needs nothing: `com.appsbay.PianoFlow.premium` belongs to the app record and Universal
+Purchase delivers it to the Mac. No macOS-specific product exists or is needed.
+
+iOS version 1.2 build 11 is a separate platform version and was not touched; it remains Waiting
+for Review.
 
 `Scripts/check-archive.sh` inspects **iOS** archives: it expects an iOS device executable, iOS
 device families, and resolved AdMob settings. It does not apply to a Mac Catalyst archive.
@@ -92,7 +109,26 @@ device families, and resolved AdMob settings. It does not apply to a Mac Catalys
   `settings.keyLabels`. The same test fails identically on unmodified `main` on that simulator, so
   it is pre-existing and not caused by the Mac Catalyst work. The validated simulators in
   [UI smoke tests](UISmokeTests.md) are iPhone 17 and iPad Pro 13-inch, not iPhone 17 Pro.
+- The premium copy was checked on the running Mac build: the settings panel reads "More piano
+  sounds and studio tools" with no ad claim, and the paywall lists exactly three benefits — the two
+  piano sounds, the advanced recording studio, and lossless WAV export — with no ad-free row.
+- StoreKit on the Mac resolved the real `com.appsbay.PianoFlow.premium` product and showed its
+  localized price. That is evidence the Mac build reaches the shared product; it is not a completed
+  purchase and does not establish Universal Purchase entitlement delivery.
+- A signed Mac Catalyst **Release archive** of 1.2 (12) succeeded (team F694X76A5X, Apple
+  Development signing, no embedded frameworks, sandbox entitlements, no ad or tracking keys).
+- The App Store **export** succeeded: `PianoFlow.pkg`, a universal x86_64 + arm64 build signed with
+  an Apple Distribution certificate under the `Mac Catalyst Team Store Provisioning Profile:
+  com.appsbay.PianoFlow`, explicit App ID `F694X76A5X.com.appsbay.PianoFlow`, `get-task-allow`
+  false, symbols included, installer signed by `3rd Party Mac Developer Installer: APPS BAY
+  LIMITED`. The archive, package, and logs are retained in ignored
+  `build/releases/PianoFlow-1.2-12-mac-20261101/`.
+- Two macOS store cards were rendered at 2880 × 1800, opaque RGB, losslessly compressed, from
+  authentic Mac Catalyst window captures. The already-uploaded iOS and creative cards were left
+  byte-for-byte unchanged.
+- The upload succeeded (delivery UUID `d44e607e-3730-45dc-b86a-2aa0c5637056`, 11,532,271 bytes)
+  and App Store Connect reported build 12 as VALID.
 
-Not verified: any real or Sandbox purchase on the Mac, Universal Purchase entitlement delivery, a
-Mac Catalyst archive or upload, MIDI hardware, audio output, and the paywall and settings screens
-driven by hand on macOS.
+Not verified: any real or Sandbox purchase on the Mac, Universal Purchase entitlement delivery
+to a Mac, App Review's response, MIDI hardware, and audio output. The macOS version has not
+been submitted and cannot be until export compliance is answered.
